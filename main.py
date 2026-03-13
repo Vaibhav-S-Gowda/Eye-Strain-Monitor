@@ -10,6 +10,9 @@ face_mesh = mp_face_mesh.FaceMesh()
 
 # Webcam
 cap = cv2.VideoCapture(0)
+if not cap.isOpened():
+    print("Camera not detected")
+    exit()
 
 blink_count = 0
 start_time = time.time()
