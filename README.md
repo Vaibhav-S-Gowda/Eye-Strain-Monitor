@@ -1,8 +1,4 @@
-# 👁️ AI Digital Eye Strain Monitor
-
-[![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/)
-[![OpenCV](https://img.shields.io/badge/OpenCV-4.x-orange)](https://opencv.org/)
-[![MediaPipe](https://img.shields.io/badge/MediaPipe-Latest-green)](https://mediapipe.dev/)
+# AI Digital Eye Strain Monitor
 
 ## ⚠️ The Problem
 In the era of remote work and digital learning, heavy screen usage leads to **Computer Vision Syndrome (CVS)**. This manifests as:
