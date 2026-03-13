@@ -1,105 +1,88 @@
 import cv2
 import mediapipe as mp
-import numpy as np
 import time
-import math
+import numpy as np
 
-# Initialize mediapipe
+# --- Configuration ---
+BLINK_THRESHOLD = 0.22  # Eye Aspect Ratio threshold (lower = more closed)
+BLINK_CONSEC_FRAMES = 3 # Frames eye must be closed to count as a blink
+REMINDER_INTERVAL = 20 * 60  # 20 minutes in seconds (20-20-20 rule)
+
+# Initialize MediaPipe Face Mesh
 mp_face_mesh = mp.solutions.face_mesh
-face_mesh = mp_face_mesh.FaceMesh()
+face_mesh = mp_face_mesh.FaceMesh(refine_landmarks=True, max_num_faces=1)
 
-# Webcam
-cap = cv2.VideoCapture(0)
+# Indices for Eyes (MediaPipe)
+LEFT_EYE = [362, 385, 387, 263, 373, 380]
+RIGHT_EYE = [33, 160, 158, 133, 153, 144]
 
-blink_count = 0
-start_time = time.time()
+def get_ear(landmarks, eye_indices):
+    """Calculate Eye Aspect Ratio (EAR)"""
+    points = [landmarks[i] for i in eye_indices]
+    # Vertical distances
+    v1 = np.linalg.norm(np.array([points[1].x, points[1].y]) - np.array([points[5].x, points[5].y]))
+    v2 = np.linalg.norm(np.array([points[2].x, points[2].y]) - np.array([points[4].x, points[4].y]))
+    # Horizontal distance
+    h = np.linalg.norm(np.array([points[0].x, points[0].y]) - np.array([points[3].x, points[3].y]))
+    return (v1 + v2) / (2.0 * h)
 
-EAR_THRESHOLD = 0.20
-DISTANCE_THRESHOLD = 250
+def main():
+    cap = cv2.VideoCapture(0)
+    blink_count = 0
+    frame_counter = 0
+    start_time = time.time()
+    last_reminder = time.time()
 
-def eye_aspect_ratio(eye):
-    A = np.linalg.norm(np.array(eye[1]) - np.array(eye[5]))
-    B = np.linalg.norm(np.array(eye[2]) - np.array(eye[4]))
-    C = np.linalg.norm(np.array(eye[0]) - np.array(eye[3]))
-    ear = (A + B) / (2.0 * C)
-    return ear
+    print("Eye Strain Monitor Started. Press 'q' to quit.")
 
-while True:
-    ret, frame = cap.read()
-    h, w, _ = frame.shape
+    while cap.isOpened():
+        success, image = cap.read()
+        if not success: break
 
-    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    results = face_mesh.process(rgb)
+        # Flip and convert to RGB
+        image = cv2.flip(image, 1)
+        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        results = face_mesh.process(rgb_image)
 
-    posture_status = "Good"
-    distance_status = "Safe"
+        if results.multi_face_landmarks:
+            for face_landmarks in results.multi_face_landmarks:
+                l_ear = get_ear(face_landmarks.landmark, LEFT_EYE)
+                r_ear = get_ear(face_landmarks.landmark, RIGHT_EYE)
+                ear = (l_ear + r_ear) / 2.0
 
-    if results.multi_face_landmarks:
-        for face_landmarks in results.multi_face_landmarks:
+                # Blink Detection Logic
+                if ear < BLINK_THRESHOLD:
+                    frame_counter += 1
+                else:
+                    if frame_counter >= BLINK_CONSEC_FRAMES:
+                        blink_count += 1
+                    frame_counter = 0
 
-            landmarks = []
+        # UI Overlays
+        elapsed_time = int(time.time() - start_time)
+        cv2.putText(image, f"Blinks: {blink_count}", (30, 50), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        
+        # 20-20-20 Rule Timer
+        time_since_break = time.time() - last_reminder
+        timer_text = f"Next Break: {int((REMINDER_INTERVAL - time_since_break)/60)}m"
+        cv2.putText(image, timer_text, (30, 100), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
 
-            for lm in face_landmarks.landmark:
-                x = int(lm.x * w)
-                y = int(lm.y * h)
-                landmarks.append((x, y))
+        if time_since_break > REMINDER_INTERVAL:
+            cv2.putText(image, "LOOK AWAY! 20ft for 20s", (100, 200), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 4)
+            # Reset reminder after 20 seconds of break
+            if time_since_break > REMINDER_INTERVAL + 20:
+                last_reminder = time.time()
 
-            # Left eye landmarks
-            left_eye = [landmarks[i] for i in [33,160,158,133,153,144]]
-            ear = eye_aspect_ratio(left_eye)
+        cv2.imshow('Eye Strain Monitor', image)
 
-            if ear < EAR_THRESHOLD:
-                blink_count += 1
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
-            # Distance estimation
-            left = landmarks[234]
-            right = landmarks[454]
-            face_width = abs(left[0] - right[0])
+    cap.release()
+    cv2.destroyAllWindows()
 
-            if face_width > DISTANCE_THRESHOLD:
-                distance_status = "Too Close!"
-
-            # Head tilt detection
-            nose = landmarks[1]
-            left_ear = landmarks[234]
-            right_ear = landmarks[454]
-
-            dx = right_ear[0] - left_ear[0]
-            dy = right_ear[1] - left_ear[1]
-
-            angle = math.degrees(math.atan2(dy, dx))
-
-            if abs(angle) > 10:
-                posture_status = "Bad Posture"
-
-            # Draw landmarks
-            for point in left_eye:
-                cv2.circle(frame, point, 2, (0,255,0), -1)
-
-    elapsed = time.time() - start_time
-    blink_rate = int(blink_count / elapsed * 60) if elapsed > 0 else 0
-
-    # Alerts
-    if blink_rate < 8:
-        cv2.putText(frame, "Blink More!", (30,50),
-                    cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,255),2)
-
-    if distance_status == "Too Close!":
-        cv2.putText(frame, "Move Away From Screen", (30,100),
-                    cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,255),2)
-
-    if posture_status == "Bad Posture":
-        cv2.putText(frame, "Straighten Your Neck", (30,150),
-                    cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,255),2)
-
-    # Display info
-    cv2.putText(frame,f"Blink Rate: {blink_rate}/min",(30,200),
-                cv2.FONT_HERSHEY_SIMPLEX,0.8,(255,255,255),2)
-
-    cv2.imshow("Eye Strain Monitor", frame)
-
-    if cv2.waitKey(1) & 0xFF == 27:
-        break
-
-cap.release()
-cv2.destroyAllWindows()
+if __name__ == "__main__":
+    main()
