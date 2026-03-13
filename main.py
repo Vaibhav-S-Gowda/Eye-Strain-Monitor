@@ -1,7 +1,16 @@
-import cv2
 import mediapipe as mp
 import time
 import numpy as np
+import cv2
+import sys
+
+cap = cv2.VideoCapture(0)
+
+if not cap.isOpened():
+    print("Error: Could not open webcam. Check if it is plugged in or used by another app.")
+    sys.exit()
+else:
+    print("Webcam successfully initialized!")
 
 # --- Configuration ---
 BLINK_THRESHOLD = 0.22  # Eye Aspect Ratio threshold (lower = more closed)
