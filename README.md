@@ -1,31 +1,160 @@
-# AI Digital Eye Strain Monitor
+# 👁️ Eye Strain Monitor
 
-## ⚠️ The Problem
-In the era of remote work and digital learning, heavy screen usage leads to **Computer Vision Syndrome (CVS)**. This manifests as:
-* **Reduced Blink Rate:** Leading to dry and irritated eyes.
-* **Poor Posture:** Causing neck and back pain.
-* **Fatigue:** Resulting from ignoring the 20-20-20 rule.
+A real-time **eye strain detection system** that monitors user eye activity and posture using a webcam.  
+This project helps prevent digital eye fatigue by analyzing blink rate and head posture and sending alerts when unhealthy patterns are detected.
 
-## ✅ The Solution
-This AI-powered monitor uses computer vision to analyze your behavior in real-time. It acts as a digital health assistant that tracks your eye health and posture without requiring extra hardware.
+With increasing screen usage, people often forget to blink regularly or maintain proper posture, which leads to eye strain and discomfort. This system uses computer vision to monitor these patterns and notify the user.
 
 ---
 
 ## 🚀 Features
-* **Blink Detection:** Uses Eye Aspect Ratio (EAR) to track blink frequency and prevent dry eyes.
-* **20-20-20 Rule Reminders:** Automatic alerts every 20 minutes to look at something 20 feet away for 20 seconds.
-* **Distance Estimation:** Detects if you are sitting too close to the screen.
-* **Posture Tracking:** Monitors head tilt and alignment to prevent "tech neck."
-* **Live UI:** Real-time feedback overlay on the camera feed.
+
+- 👁️ **Blink Detection** using Eye Aspect Ratio (EAR)
+- 🧠 **Eye Strain Monitoring**
+- 🪑 **Head Posture Detection**
+- 🔔 **Real-time Sound Alerts**
+- 📊 **Data Logging and Visualization**
+- 🎥 **Live Webcam Monitoring**
 
 ---
 
-## 🛠️ Tech Stack
-| Component | Technology |
-| :--- | :--- |
-| **Language** | Python 3.x |
-| **Vision Engine** | MediaPipe (Face Mesh) |
-| **Image Processing** | OpenCV |
-| **Math Operations** | NumPy |
+## 🛠 Tech Stack
+
+**Language**
+
+- Python
+
+**Libraries**
+
+- OpenCV
+- MediaPipe
+- NumPy
+- Pandas
+- Matplotlib
+- Scikit-learn
+
+**Other Tools**
+
+- Webcam
+- Winsound (alerts)
+- Boto3 (AWS integration)
 
 ---
+
+## 🧠 How It Works
+
+1. The webcam captures live video frames.
+2. MediaPipe detects facial landmarks.
+3. Eye landmarks are used to calculate the **Eye Aspect Ratio (EAR)**.
+4. If the EAR drops below a threshold, a blink is detected.
+5. Blink rate and head posture are monitored continuously.
+6. If abnormal patterns are detected:
+   - A sound alert is triggered.
+   - Data is logged for analysis.
+
+---
+
+## 📂 Project Structure
+
+```
+Eye-Strain-Monitor
+│
+├── main.py
+├── requirements.txt
+├── README.md
+│
+├── data
+│   └── logs.csv
+│
+├── models
+│   └── model.pkl
+│
+└── assets
+    └── alert.wav
+```
+
+*(Project structure may change as the project evolves.)*
+
+---
+
+## ⚙️ Installation
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/Vaibhav-S-Gowda/Eye-Strain-Monitor.git
+```
+
+### 2. Go to the project folder
+
+```bash
+cd Eye-Strain-Monitor
+```
+
+### 3. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## ▶️ Run the Project
+
+```bash
+python main.py
+```
+
+The webcam will start and the system will begin monitoring your eye activity.
+
+---
+
+## 📈 Future Improvements
+
+- Machine learning based eye fatigue prediction
+- Web dashboard for analytics
+- Mobile notifications
+- Personalized eye health recommendations
+- Multi-user support
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome.
+
+Steps to contribute:
+
+1. Fork the repository  
+2. Create a new branch
+
+```bash
+git checkout -b feature-name
+```
+
+3. Commit changes
+
+```bash
+git commit -m "Added new feature"
+```
+
+4. Push to branch
+
+```bash
+git push origin feature-name
+```
+
+5. Open a Pull Request
+
+---
+
+## 👨‍💻 Author
+
+**Hinduja C**
+- GitHub: https://github.com/Hinduja30
+
+**Mahima P**
+- GitHub: https://github.com/Mahimaa-30
+
+**Vaibhav S Gowda**
+- GitHub: https://github.com/Vaibhav-S-Gowda
