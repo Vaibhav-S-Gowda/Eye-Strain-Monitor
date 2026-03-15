@@ -1,28 +1,28 @@
-# Neural Nexus: Eye Health AI 👁️✨
+# Neural Nexus: Eye Health AI 
 
 Neural Nexus is a premium, AI-powered health monitoring ecosystem designed to combat digital eye strain (Computer Vision Syndrome). It transforms your computer into a sentient wellness companion that monitors posture, blinks, and screen distance in real-time.
 
 ---
 
-## 🌟 Premium Features
+## Premium Features
 
-### 🧠 Neural Nexus AI Assistant
+### Neural Nexus AI Assistant
 - **Context-Aware Feedback**: An intelligent GPT-powered assistant that interprets your live telemetry (fatigue, distance, posture) to give witty, personalized wellness advice.
 - **Smart Fallback**: Features a "Local Intelligence" mode that continues to monitor and assist even without an internet connection.
 
-### 🔭 Precision Biometric Tracking
+### Precision Biometric Tracking
 - **Neural Distance Calc**: Uses MediaPipe FaceMesh for sub-centimeter screen distance estimation via interpupillary mapping.
 - **Blink Velocity Monitoring**: Tracks Eye Aspect Ratio (EAR) to ensure healthy lubrication and micro-rest intervals.
 - **Postural Correction**: Detects "The Slouch" instantly and provides subtle visual cues to realign your spine.
 
-### 🎨 State-of-the-Art Aesthetic
+### State-of-the-Art Aesthetic
 - **Glassmorphism UI**: A high-contrast, premium interface featuring frosted glass cards, neo-glow icons, and shimmering gradients.
 - **Interactive Dashboards**: Real-time telemetry syncing with Chart.js for beautiful historical health analytics.
 - **Micro-Animations**: Dynamic "Neural Bubbles" and morphing shapes provide a fluid, premium UX.
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```text
 eye_health_ai/
@@ -43,7 +43,7 @@ eye_health_ai/
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Hardware & Environment
 - **Camera**: Standard HD Webcam.
@@ -74,7 +74,7 @@ Visit **`http://127.0.0.1:5000`** in your browser.
 
 ---
 
-## 🏗️ Technical Architecture
+## Technical Architecture
 - **Inference Layer**: MediaPipe FaceMesh + OpenCV.
 - **Logic Tier**: Multi-threaded Flask + Activity Monitoring.
 - **Persistence**: MongoDB Document Store.
