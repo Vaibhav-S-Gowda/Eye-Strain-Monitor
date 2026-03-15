@@ -289,34 +289,26 @@ def _get_summary_data(user_id):
     if not today_logs:
         return {"total_blinks": 0, "screen_time_minutes": 0, "avg_health_score": 0}
         
-    # Correct total blinks: blink_rate is already per-minute, but logged every 2s
-    # However, since blink_rate is a rolling minute average, we should average it over the segments
-    # or just sum the raw increments if we had them. 
-    # Since blink_rate in my fix IS the count of blinks in the LAST 60 seconds at that moment:
-    # A better way is to average the blink_rate across the day segments or find a better aggregator.
-    # For simplicity here, let's take the latest blink rate as current per-min, and sum screen time.
-    
     avg_blink_rate = sum(log.get("blink_rate", 0) for log in today_logs) / len(today_logs)
     total_score = sum(log.get("health_score", 0) for log in today_logs)
     avg_score = total_score / len(today_logs)
     
-    # Screen time: count gaps between logs. If gap > 5s, it's idle.
+    # Precise total blinks: sum the blink_detected flags
+    total_blinks = sum(1 for log in today_logs if log.get("blink_detected", False))
+    
+    # Screen time: count gaps between logs. If gap < 10s, it's continuous.
     total_screen_ms = 0
     for i in range(1, len(today_logs)):
         gap = today_logs[i]["timestamp"] - today_logs[i-1]["timestamp"]
-        if gap < 10000: # 10s threshold for continuous session
+        if gap < 10000:
             total_screen_ms += gap
             
     screen_time_minutes = int(total_screen_ms / 60000)
-    # If we have activity but minutes round to 0, show at least 1m for tracking progress
     if total_screen_ms > 0 and screen_time_minutes == 0:
         screen_time_minutes = 1
     
-    # Estimate total blinks today based on avg blink rate and screen time
-    estimated_total_blinks = int(avg_blink_rate * screen_time_minutes)
-    
     return {
-        "total_blinks": estimated_total_blinks,
+        "total_blinks": total_blinks,
         "screen_time_minutes": max(0, screen_time_minutes),
         "avg_health_score": int(avg_score)
     }

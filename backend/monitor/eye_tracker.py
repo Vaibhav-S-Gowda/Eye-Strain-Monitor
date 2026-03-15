@@ -28,7 +28,8 @@ def save_to_csv(data):
     else:
         df.to_csv(SESSION_LOG, mode='a', header=False, index=False)
 
-BLINK_THRESHOLD = 0.30
+BLINK_THRESHOLD = 0.23 # Adjusted for better sensitivity
+raw_blink_count = 0 # Track total session blinks raw
 
 import collections
 import time
@@ -76,9 +77,11 @@ def analyze_frame(frame):
             landmarks = face_landmarks.landmark
             ear = (get_ear(landmarks, LEFT_EYE) + get_ear(landmarks, RIGHT_EYE)) / 2
             
+            blink_detected = False
             if ear < BLINK_THRESHOLD:
                 if frame_counter == 0:
                     blink_history.append(time.time())
+                    blink_detected = True
                 frame_counter += 1
             else:
                 frame_counter = 0
@@ -117,7 +120,7 @@ def analyze_frame(frame):
         
     current_blink_rate = len(blink_history)
     
-    return current_blink_rate, max(min(real_distance_cm, 120), 10), is_slouching, looking_away, int(brightness), tilt_angle
+    return current_blink_rate, max(min(real_distance_cm, 120), 10), is_slouching, looking_away, int(brightness), tilt_angle, blink_detected
 
 def start_eye_monitor():
     from pymongo import MongoClient
@@ -155,8 +158,11 @@ def start_eye_monitor():
             timestamp = int(time.time() * 1000)
             
             if ret:
+                global raw_blink_count
                 try:
-                    blink_rate, distance, is_slouching, looking_away, brightness, tilt_angle = analyze_frame(frame)
+                    blink_rate, distance, is_slouching, looking_away, brightness, tilt_angle, blink_detected = analyze_frame(frame)
+                    if blink_detected:
+                        raw_blink_count += 1
                 except Exception as e:
                     print("Error analyzing frame:", e)
                     continue
@@ -213,7 +219,8 @@ def start_eye_monitor():
                         "health_score": health_score,
                         "is_slouching": is_slouching,
                         "looking_away": looking_away,
-                        "brightness": brightness
+                        "brightness": brightness,
+                        "blink_detected": blink_detected
                     }
                     logs.insert_one(data)
                     save_to_csv({"Timestamp": timestamp, "BlinkRate": blink_rate, "Distance": smooth_dist, "Tilt": smooth_tilt, "FatigueScore": fatigue, "Activity": activity})
