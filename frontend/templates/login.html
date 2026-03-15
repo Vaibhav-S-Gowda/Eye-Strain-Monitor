@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Neural Nexus</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --cream:  #f5f0e8;
+            --cream2: #ede8da;
+            --dark:   #1a1a1a;
+            --dark2:  #2d2d2d;
+            --yellow: #e8c84a;
+            --gray:   #888;
+            --border: rgba(0,0,0,0.08);
+            --shadow: 0 8px 32px rgba(0,0,0,0.10);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--cream);
+            min-height: 100vh;
+            display: flex;
+            align-items: stretch;
+            overflow: hidden;
+        }
+
+        /* ---- Split Layout ---- */
+        .auth-left {
+            flex: 1;
+            background: var(--dark);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 60px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* decorative circles */
+        .auth-left::before {
+            content: '';
+            position: absolute;
+            width: 380px; height: 380px;
+            border-radius: 50%;
+            background: var(--yellow);
+            opacity: 0.12;
+            top: -120px; right: -120px;
+        }
+
+        .auth-left::after {
+            content: '';
+            position: absolute;
+            width: 220px; height: 220px;
+            border-radius: 50%;
+            background: var(--yellow);
+            opacity: 0.07;
+            bottom: -80px; left: -60px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 48px;
+            z-index: 1;
+        }
+
+        .brand-icon {
+            width: 44px; height: 44px;
+            background: var(--yellow);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem;
+        }
+
+        .brand-name {
+            color: white;
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .left-headline {
+            color: white;
+            font-size: 2.5rem;
+            font-weight: 700;
+            line-height: 1.2;
+            max-width: 380px;
+            margin-bottom: 20px;
+            z-index: 1;
+        }
+
+        .left-headline span { color: var(--yellow); }
+
+        .left-sub {
+            color: rgba(255,255,255,0.55);
+            font-size: 1rem;
+            max-width: 340px;
+            line-height: 1.6;
+            z-index: 1;
+        }
+
+        .features {
+            margin-top: 48px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            z-index: 1;
+        }
+
+        .feat {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: rgba(255,255,255,0.7);
+            font-size: 0.9rem;
+        }
+
+        .feat-dot {
+            width: 8px; height: 8px;
+            background: var(--yellow);
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* ---- Right Panel (Form) ---- */
+        .auth-right {
+            width: 460px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 48px 40px;
+            background: var(--cream);
+        }
+
+        .form-box {
+            width: 100%;
+            max-width: 360px;
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 6px;
+        }
+
+        .form-sub {
+            color: var(--gray);
+            font-size: 0.9rem;
+            margin-bottom: 32px;
+        }
+
+        .error-box {
+            background: rgba(239,68,68,0.08);
+            border: 1px solid rgba(239,68,68,0.25);
+            color: #ef4444;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .field {
+            margin-bottom: 18px;
+        }
+
+        .field label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 7px;
+            letter-spacing: 0.3px;
+        }
+
+        .field input {
+            width: 100%;
+            padding: 12px 16px;
+            background: white;
+            border: 1.5px solid var(--border);
+            border-radius: 12px;
+            font-size: 0.95rem;
+            color: var(--dark);
+            font-family: 'Inter', sans-serif;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+
+        .field input:focus {
+            border-color: var(--yellow);
+            box-shadow: 0 0 0 3px rgba(232,200,74,0.18);
+        }
+
+        .field input::placeholder { color: #bbb; }
+
+        .auth-btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--dark);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: background 0.2s, transform 0.1s;
+            position: relative;
+        }
+
+        .auth-btn:hover { background: var(--dark2); transform: translateY(-1px); }
+        .auth-btn:active { transform: translateY(0); }
+
+        .auth-btn.loading { opacity: 0.75; pointer-events: none; }
+
+        .toggle-row {
+            text-align: center;
+            margin-top: 22px;
+            font-size: 0.88rem;
+            color: var(--gray);
+        }
+
+        .toggle-row a {
+            color: var(--dark);
+            font-weight: 600;
+            text-decoration: none;
+            border-bottom: 2px solid var(--yellow);
+        }
+
+        .toggle-row a:hover { opacity: 0.7; }
+
+        /* ---- Account Switcher ---- */
+        .switcher-box {
+            display: none;
+            margin-bottom: 32px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .switcher-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .saved-account {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .saved-account:hover { transform: translateY(-4px); }
+
+        .saved-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+
+        .saved-account:hover .saved-avatar { border-color: var(--yellow); }
+
+        .saved-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+        .saved-name {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--dark);
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+        }
+
+        .use-another {
+            margin-top: 24px;
+            display: inline-block;
+            font-size: 0.85rem;
+            color: var(--gray);
+            cursor: pointer;
+            border-bottom: 1px solid transparent;
+        }
+
+        .use-another:hover { color: var(--dark); border-bottom-color: var(--dark); }
+
+        /* responsive */
+        @media (max-width: 820px) {
+            body { flex-direction: column; overflow: auto; }
+            .auth-left { padding: 40px 30px; min-height: 220px; flex: unset; }
+            .left-headline { font-size: 1.8rem; }
+            .features { display: none; }
+            .auth-right { width: 100%; padding: 36px 24px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Left branding panel -->
+    <div class="auth-left">
+        <div class="brand">
+            <div class="brand-icon">👁</div>
+            <span class="brand-name">Neural Nexus</span>
+        </div>
+
+        <h1 class="left-headline">
+            Smart Neural Nexus<br><span>Monitoring</span> for You
+        </h1>
+        <p class="left-sub">
+            Real-time blink tracking, fatigue detection, and personalized AI health coaching — all in one place.
+        </p>
+
+        <div class="features">
+            <div class="feat"><div class="feat-dot"></div>Real-time blink rate & fatigue monitoring</div>
+            <div class="feat"><div class="feat-dot"></div>AI-powered personalized health coach</div>
+            <div class="feat"><div class="feat-dot"></div>Camera diagnostic & posture checks</div>
+            <div class="feat"><div class="feat-dot"></div>Daily analytics & productivity timeline</div>
+        </div>
+    </div>
+
+    <!-- Right form panel -->
+    <div class="auth-right">
+        <div class="form-box">
+            <!-- Account Switcher View -->
+            <div id="switcher-view" class="switcher-box">
+                <h2 class="form-title">Who's using Nexus?</h2>
+                <p class="form-sub">Select an account to sign in quickly</p>
+                <div id="switcher-grid" class="switcher-grid"></div>
+                <div class="use-another" id="show-form-btn">Use another account</div>
+            </div>
+
+            <!-- Main Auth View -->
+            <div id="auth-view">
+                <h2 class="form-title" id="auth-title">Welcome back</h2>
+                <p class="form-sub" id="auth-subtitle">Sign in to your account to continue</p>
+
+            <div class="error-box" id="error-box"></div>
+
+            <form id="auth-form">
+                <div class="field">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" placeholder="e.g. john_doe" autocomplete="username" required>
+                </div>
+                <div class="field">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" required>
+                </div>
+                <button type="submit" class="auth-btn" id="submit-btn">Sign In</button>
+            </form>
+
+            <div class="toggle-row">
+                <span id="toggle-msg">Don't have an account?</span>
+                <a href="#" id="toggle-link">Register now</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form       = document.getElementById('auth-form');
+        const titleEl    = document.getElementById('auth-title');
+        const subtitleEl = document.getElementById('auth-subtitle');
+        const submitBtn  = document.getElementById('submit-btn');
+        const toggleLink = document.getElementById('toggle-link');
+        const toggleMsg  = document.getElementById('toggle-msg');
+        const errorBox   = document.getElementById('error-box');
+        
+        const authView      = document.getElementById('auth-view');
+        const switcherView  = document.getElementById('switcher-view');
+        const switcherGrid  = document.getElementById('switcher-grid');
+        const showFormBtn   = document.getElementById('show-form-btn');
+
+        let isLogin = true;
+
+        // --- Account Switcher Logic ---
+        function getSavedAccounts() {
+            try { return JSON.parse(localStorage.getItem('neuralNexusAccounts') || '[]'); }
+            catch(e) { return []; }
+        }
+
+        function initSwitcher() {
+            const accounts = getSavedAccounts();
+            if (accounts.length > 0) {
+                authView.style.display = 'none';
+                switcherView.style.display = 'block';
+                
+                switcherGrid.innerHTML = '';
+                accounts.forEach(acc => {
+                    const div = document.createElement('div');
+                    div.className = 'saved-account';
+                    div.innerHTML = `
+                        <div class="saved-avatar">
+                            ${acc.avatar_url ? `<img src="${acc.avatar_url}" alt="Avatar">` : '👤'}
+                        </div>
+                        <span class="saved-name">${acc.username}</span>
+                    `;
+                    div.onclick = () => {
+                        document.getElementById('username').value = acc.username;
+                        switcherView.style.display = 'none';
+                        authView.style.display = 'block';
+                        document.getElementById('password').focus();
+                    };
+                    switcherGrid.appendChild(div);
+                });
+            }
+        }
+
+        showFormBtn.onclick = () => {
+            switcherView.style.display = 'none';
+            authView.style.display = 'block';
+        };
+
+        initSwitcher();
+
+        function showError(msg) {
+            errorBox.textContent = msg;
+            errorBox.style.display = 'block';
+        }
+
+        function hideError() {
+            errorBox.style.display = 'none';
+        }
+
+        toggleLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            isLogin = !isLogin;
+            hideError();
+
+            if (isLogin) {
+                titleEl.textContent    = 'Welcome back';
+                subtitleEl.textContent = 'Sign in to your account to continue';
+                submitBtn.textContent  = 'Sign In';
+                toggleMsg.textContent  = "Don't have an account?";
+                toggleLink.textContent = 'Register now';
+                document.getElementById('password').setAttribute('autocomplete', 'current-password');
+            } else {
+                titleEl.textContent    = 'Create account';
+                subtitleEl.textContent = 'Join Neural Nexus to monitor your health';
+                submitBtn.textContent  = 'Sign Up';
+                toggleMsg.textContent  = 'Already have an account?';
+                toggleLink.textContent = 'Sign in instead';
+                document.getElementById('password').setAttribute('autocomplete', 'new-password');
+            }
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideError();
+
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+
+            if (!username || !password) {
+                showError('Please fill in all fields.');
+                return;
+            }
+
+            submitBtn.classList.add('loading');
+            submitBtn.textContent = isLogin ? 'Signing in...' : 'Creating account...';
+
+            const endpoint = isLogin ? '/api/login' : '/api/register';
+
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    window.location.href = '/';
+                } else {
+                    showError(data.error || 'An error occurred. Please try again.');
+                    submitBtn.classList.remove('loading');
+                    submitBtn.textContent = isLogin ? 'Sign In' : 'Sign Up';
+                }
+            } catch (err) {
+                showError('Connection error. Please check the server is running.');
+                submitBtn.classList.remove('loading');
+                submitBtn.textContent = isLogin ? 'Sign In' : 'Sign Up';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural Nexus — Camera Diagnostic</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    
+    <!-- MediaPipe Vision -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <style>
+        .camera-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 1rem;
+            position: relative;
+        }
+        .video-box {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            border-radius: 20px;
+            overflow: hidden;
+            background: #1e1e1e;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+        }
+        .input_video {
+            display: none;
+        }
+        .output_canvas {
+            width: 100%;
+            display: block;
+        }
+        .overlay-metrics {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            background: rgba(0,0,0,0.7);
+            padding: 20px;
+            border-radius: 16px;
+            font-family: inherit;
+            z-index: 10;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .overlay-metrics p {
+            margin: 5px 0;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        .controls {
+            margin-top: 25px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+    </style>
+</head>
+
+<body>
+<div id="toast-container"></div>
+
+<div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="logo-svg"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>
+            <span class="logo-text">Neural Nexus</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/" class="sidebar-link" title="Dashboard">
+                <span class="s-icon">📊</span>
+                <span class="s-label">Dashboard</span>
+            </a>
+            <a href="/real-time" class="sidebar-link" title="Real-Time">
+                <span class="s-icon">👁️</span>
+                <span class="s-label">Real-Time</span>
+            </a>
+            <a href="/camera" class="sidebar-link active" title="Camera">
+                <span class="s-icon">📷</span>
+                <span class="s-label">Camera</span>
+            </a>
+            <a href="/analytics" class="sidebar-link" title="Analytics">
+                <span class="s-icon">📈</span>
+                <span class="s-label">Analytics</span>
+            </a>
+            <a href="/timeline" class="sidebar-link" title="Timeline">
+                <span class="s-icon">⏳</span>
+                <span class="s-label">Timeline</span>
+            </a>
+        </nav>
+        <div class="sidebar-bottom">
+            <a href="/profile" class="sidebar-link" title="Profile">
+                <div class="sidebar-avatar" id="sidebar-avatar-container">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <span class="s-label" id="sidebar-user-name">User</span>
+            </a>
+            <a href="/logout" class="sidebar-link logout" title="Logout">
+                <span class="s-icon">🚪</span>
+                <span class="s-label">Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="top-header">
+            <div class="header-greeting">
+                <h1>Camera Diagnostic</h1>
+                <p class="sub-greeting">Real-time browser-based vision check</p>
+            </div>
+            <div class="header-nav">
+                <a href="/" class="pill">Dashboard</a>
+                <a href="/real-time" class="pill">Real-Time</a>
+                <a href="/camera" class="pill active">Camera</a>
+                <a href="/analytics" class="pill">Analytics</a>
+            </div>
+        </header>
+
+        <div class="camera-container">
+            <div class="video-box">
+                <video class="input_video"></video>
+                <canvas class="output_canvas" width="800" height="600"></canvas>
+                <video id="pip_video" style="position:fixed; top:0; left:0; width:1px; height:1px; opacity:0; pointer-events:none;" autoplay muted playsinline></video>
+                <div class="overlay-metrics" id="metrics-overlay">
+                    <p style="color: #22c55e;">Blinks: <span id="m-blinks">0</span></p>
+                    <p style="color: #22c55e;">Blink Rate: <span id="m-rate">0.0</span>/min</p>
+                    <p style="color: #fff;">Distance: <span id="m-dist">0</span> cm</p>
+                    <p style="color: #e8c84a;">Head Tilt: <span id="m-tilt">0.0</span>°</p>
+                    <p style="color: #fff;">Activity: <span id="m-act">--</span></p>
+                    <p style="color: #ef4444;">Fatigue Index: <span id="m-fatigue">0</span></p>
+                    <p style="color: #ef4444; display:none;" id="m-mute">SOUND MUTED</p>
+                    <div id="m-ai-fatigued" style="display:none; color:#ef4444; font-size:1.5rem; margin-top:20px; text-shadow: 0 2px 10px rgba(0,0,0,0.5);">AI: FATIGUED</div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn-primary" id="startBtn">⚡ Start Camera check</button>
+                <button class="btn-primary" id="stopBtn" style="background:#ef4444; display:none;">Stop Monitor</button>
+                <button class="btn-secondary" id="pipBtn" style="display:none;">🖼️ Background Mode</button>
+                <button class="btn-secondary" id="resetBtn">Reset Stats</button>
+                <button class="btn-secondary" id="muteBtn">Mute Sound</button>
+                <button id="maskToggleBtn" class="btn-secondary">Hide Mask</button>
+            </div>
+            <p id="pip-info" style="display:none; color: #22c55e; margin-top: 10px; font-size: 0.8rem; font-weight: 600;">
+                ✨ Background Tracking Active (Keep the floating window open)
+            </p>
+            <p style="margin-top: 25px; color: var(--gray); max-width: 600px; text-align: center; font-size: 0.85rem;">
+                This diagnostic tool runs locally in your browser logic. Use **Background Mode** to keep monitoring while switching tabs.
+            </p>
+        </div>
+    </main>
+</div>
+
+<script src="/static/camera.js"></script>
+<script src="/static/dashboard.js"></script>
+</body>
+</html>

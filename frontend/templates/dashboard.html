@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural Nexus — Dashboard</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- MediaPipe Vision for Background Tracking -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+</head>
+
+<body>
+<div id="toast-container"></div>
+
+<!-- Hidden Camera Elements for Background Tracking -->
+<video class="input_video" style="position: absolute; left: -10000px; top: 0; width: 640px; height: 480px;"></video>
+<canvas class="output_canvas" width="800" height="600" style="position: absolute; left: -10000px; top: 0;"></canvas>
+<video id="pip_video" style="position: absolute; left: -10000px; top: 0; width: 640px; height: 480px;" autoplay muted playsinline></video>
+
+<!-- Layout Wrapper -->
+<div class="app-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="logo-svg"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>
+            <span class="logo-text">Neural Nexus</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/" class="sidebar-link active" title="Dashboard">
+                <span class="s-icon">📊</span>
+                <span class="s-label">Dashboard</span>
+            </a>
+            <a href="/real-time" class="sidebar-link" title="Real-Time">
+                <span class="s-icon">👁️</span>
+                <span class="s-label">Real-Time</span>
+            </a>
+            <a href="/camera" class="sidebar-link" title="Camera">
+                <span class="s-icon">📷</span>
+                <span class="s-label">Camera</span>
+            </a>
+            <a href="/analytics" class="sidebar-link" title="Analytics">
+                <span class="s-icon">📈</span>
+                <span class="s-label">Analytics</span>
+            </a>
+            <a href="/timeline" class="sidebar-link" title="Timeline">
+                <span class="s-icon">⏳</span>
+                <span class="s-label">Timeline</span>
+            </a>
+        </nav>
+        <div class="sidebar-bottom">
+            <a href="/profile" class="sidebar-link" title="Profile">
+                <div class="sidebar-avatar" id="sidebar-avatar-container">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <span class="s-label" id="sidebar-user-name">User</span>
+            </a>
+            <a href="/logout" class="sidebar-link logout" title="Logout">
+                <span class="s-icon">🚪</span>
+                <span class="s-label">Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+        <!-- Top Header -->
+        <header class="top-header">
+            <div class="header-greeting">
+                <h1>Welcome in, <span id="header-user-name">User</span></h1>
+                <p class="sub-greeting">Here's your smart Neural Nexus overview</p>
+            </div>
+            <div class="header-nav">
+                <a href="/" class="pill active">Dashboard</a>
+                <a href="/real-time" class="pill">Real-Time</a>
+                <a href="/camera" class="pill">Camera</a>
+                <a href="/analytics" class="pill">Analytics</a>
+            </div>
+            <div class="header-actions">
+                <div class="status-badge" id="status-indicator">
+                    <span class="status-dot offline"></span>
+                    <span id="system-status">Offline</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content Grid -->
+        <div class="content-grid">
+
+            <!-- Left Column -->
+            <div class="left-col">
+
+                <!-- Profile Card -->
+                <div class="profile-card">
+                    <div class="avatar-ring" id="dashboard-avatar-container">
+                        <div class="avatar-wow">
+                            <i class="fas fa-user-astronaut"></i>
+                        </div>
+                    </div>
+                    <div class="profile-info">
+                        <h3 id="profile-display-name">User</h3>
+                        <span class="profile-badge" id="health-badge">Good</span>
+                    </div>
+                    <div class="profile-stats">
+                        <div class="pstat">
+                            <span class="pstat-val" id="blinkText">0</span>
+                            <span class="pstat-label">Blinks/min</span>
+                        </div>
+                        <div class="pstat-div"></div>
+                        <div class="pstat">
+                            <span class="pstat-val" id="screenText">0</span>
+                            <span class="pstat-label">Screen min</span>
+                        </div>
+                        <div class="pstat-div"></div>
+                        <div class="pstat">
+                            <span class="pstat-val" id="fatigue-stat">0%</span>
+                            <span class="pstat-label">Fatigue</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Metric Cards -->
+                <div class="metric-cards">
+                    <div class="metric-card yellow">
+                        <div class="mc-top">
+                            <span class="mc-icon">👁</span>
+                            <span class="mc-label">Blink Rate</span>
+                        </div>
+                        <div class="mc-val" id="blink-card-val">-- <small>/ min</small></div>
+                        <div class="mc-bar-wrap"><div class="mc-bar" id="blink-bar" style="width:0%"></div></div>
+                    </div>
+                    <div class="metric-card dark">
+                        <div class="mc-top">
+                            <span class="mc-icon">🖥</span>
+                            <span class="mc-label">Screen Time</span>
+                        </div>
+                        <div class="mc-val" id="screen-card-val">0 <small>min</small></div>
+                        <div class="mc-bar-wrap"><div class="mc-bar" id="screen-bar" style="width:0%"></div></div>
+                    </div>
+                    <div class="metric-card light">
+                        <div class="mc-top">
+                            <span class="mc-icon">📏</span>
+                            <span class="mc-label">Distance</span>
+                        </div>
+                        <div class="mc-val" id="dist-card-val">-- <small>cm</small></div>
+                        <div class="mc-bar-wrap"><div class="mc-bar" id="dist-bar" style="width:0%"></div></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Center Column - Charts -->
+            <div class="center-col">
+
+                <!-- Progress Chart Card -->
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <div>
+                            <h3>Blink Rate</h3>
+                            <p class="chart-sub">Today's timeline</p>
+                        </div>
+                        <div class="chart-legend">
+                            <span class="legend-dot yellow-dot"></span> Blinks
+                            <span class="legend-dot dark-dot"></span> Fatigue
+                        </div>
+                    </div>
+                    <div class="chart-wrap" style="height:180px;">
+                        <canvas id="blinkChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Time Tracker / Timer Card -->
+                <div class="timer-card">
+                    <div class="timer-header">
+                        <div>
+                            <h3>Eye Strain Index</h3>
+                            <p class="chart-sub" id="bg-status">Live fatigue level — Monitoring Offline</p>
+                        </div>
+                        <button id="startBgBtn" class="timer-btn" style="background: var(--yellow); color: #1a1a1a; border: none; cursor: pointer;">⚡ Start Background Tracking</button>
+                        <button id="stopBgBtn" class="timer-btn" style="display:none; background: #ef4444; color: white; border: none; cursor: pointer;">🛑 Stop Tracking</button>
+                        <button id="pipBtn" class="timer-btn" style="display:none; background: var(--dark); color: white; border: none; cursor: pointer;">🖼️ Open Floating Window</button>
+                        <button id="maskToggleBtn" class="timer-btn" style="display:none; background: var(--gray); color: white; border: none; cursor: pointer; margin-left: 5px;">Hide Mask</button>
+                        <p id="pip-info" style="display:none; color: #22c55e; margin-top: 5px; font-size: 0.75rem; font-weight: 600;">✨ Background Window Active</p>
+                    </div>
+                    <div class="timer-ring-wrap">
+                        <svg viewBox="0 0 120 120" class="ring-svg">
+                            <circle class="ring-track" cx="60" cy="60" r="50" />
+                            <circle class="ring-fill strain-ring" cx="60" cy="60" r="50" id="strain-circle"
+                                stroke-dasharray="0 314" />
+                        </svg>
+                        <div class="ring-center">
+                            <div class="ring-big-num" id="strainPercent">0%</div>
+                            <div class="ring-label">Strain</div>
+                        </div>
+                    </div>
+                    <div class="timer-stats">
+                        <div class="ts-item"><span class="ts-icon green"></span> Low Risk</div>
+                        <div class="ts-item"><span class="ts-icon yellow"></span> Moderate</div>
+                        <div class="ts-item"><span class="ts-icon red"></span> High Risk</div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column - Tasks / Chat -->
+            <div class="right-col">
+
+                <div class="task-card" style="flex:1;">
+                    <div class="task-header">
+                        <h3>AI Health Assistant</h3>
+                        <button id="clearChatBtn" title="Clear chat" style="background:transparent;border:1.5px solid rgba(0,0,0,0.12);color:var(--gray);font-size:0.72rem;font-weight:500;padding:4px 12px;border-radius:20px;cursor:pointer;letter-spacing:0.03em;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--dark)';this.style.color='var(--dark)';" onmouseout="this.style.borderColor='rgba(0,0,0,0.12)';this.style.color='var(--gray)';">Clear</button>
+                    </div>
+
+                    <div class="chat-messages" id="chatBody">
+                        <div class="chat-msg bot">Hello! I'm your AI Neural Nexus assistant. Ask me about fatigue, posture, breaks, or your stats!</div>
+                    </div>
+
+                    <div class="chat-input-row">
+                        <input type="text" id="chatInput" class="chat-in" placeholder="Ask about Neural Nexus...">
+                        <button class="chat-send-btn" id="sendChatBtn">→</button>
+                    </div>
+                </div>
+
+                <!-- Quick Actions Card -->
+                <div class="quick-card">
+                    <h4>Quick Actions</h4>
+                    <a href="/camera" class="qaction yellow-btn">📷 Camera Check</a>
+                    <a href="/real-time" class="qaction outline-btn">👁 Live Metrics</a>
+                    <a href="/analytics" class="qaction outline-btn">📊 Analytics</a>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script src="/static/camera.js"></script>
+<script src="/static/dashboard.js"></script>
+</body>
+</html>
