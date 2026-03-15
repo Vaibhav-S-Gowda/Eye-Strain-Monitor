@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural Nexus — Real-Time</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- MediaPipe Vision for Background Tracking -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+</head>
+
+<body>
+<div id="toast-container"></div>
+
+<!-- Hidden Camera Elements for Background Tracking -->
+<video class="input_video" style="position: absolute; left: -10000px; top: 0; width: 640px; height: 480px;"></video>
+<canvas class="output_canvas" width="800" height="600" style="position: absolute; left: -10000px; top: 0;"></canvas>
+<video id="pip_video" style="position: absolute; left: -10000px; top: 0; width: 640px; height: 480px;" autoplay muted playsinline></video>
+
+<div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="logo-svg"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>
+            <span class="logo-text">Neural Nexus</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/" class="sidebar-link" title="Dashboard">
+                <span class="s-icon">📊</span>
+                <span class="s-label">Dashboard</span>
+            </a>
+            <a href="/real-time" class="sidebar-link active" title="Real-Time">
+                <span class="s-icon">👁️</span>
+                <span class="s-label">Real-Time</span>
+            </a>
+            <a href="/camera" class="sidebar-link" title="Camera">
+                <span class="s-icon">📷</span>
+                <span class="s-label">Camera</span>
+            </a>
+            <a href="/analytics" class="sidebar-link" title="Analytics">
+                <span class="s-icon">📈</span>
+                <span class="s-label">Analytics</span>
+            </a>
+            <a href="/timeline" class="sidebar-link" title="Timeline">
+                <span class="s-icon">⏳</span>
+                <span class="s-label">Timeline</span>
+            </a>
+        </nav>
+        <div class="sidebar-bottom">
+            <a href="/profile" class="sidebar-link" title="Profile">
+                <div class="sidebar-avatar" id="sidebar-avatar-container">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <span class="s-label" id="sidebar-user-name">User</span>
+            </a>
+            <a href="/logout" class="sidebar-link logout" title="Logout">
+                <span class="s-icon">🚪</span>
+                <span class="s-label">Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="top-header">
+            <div class="header-greeting">
+                <h1>Real-Time Monitoring</h1>
+                <p class="sub-greeting">Live telemetry & AI analysis — <span id="bg-status" style="color:var(--gray)">Monitoring Offline</span></p>
+                <button id="startBgBtn" class="pill" style="margin-top:10px; border:none; background:var(--yellow); color:black; cursor:pointer; font-weight:600;">⚡ Start Monitor</button>
+                <button id="stopBgBtn" class="pill" style="display:none; margin-top:10px; border:none; background:#ef4444; color:white; cursor:pointer; font-weight:600;">🛑 Stop Monitor</button>
+                <button id="pipBtn" class="pill" style="display:none; margin-top:10px; border:none; background:var(--dark); color:white; cursor:pointer; font-weight:600;">🖼️ Open PiP</button>
+                <button id="maskToggleBtn" class="pill" style="display:none; margin-top:10px; border:none; background:var(--gray); color:white; cursor:pointer; font-weight:600; margin-left: 5px;">Hide Mask</button>
+            </div>
+            <div class="header-nav">
+                <a href="/" class="pill">Dashboard</a>
+                <a href="/real-time" class="pill active">Real-Time</a>
+                <a href="/camera" class="pill">Camera</a>
+                <a href="/analytics" class="pill">Analytics</a>
+            </div>
+        </header>
+
+        <div class="content-grid" style="grid-template-columns: 1fr 300px;">
+            <div class="left-col" style="grid-column: span 1;">
+                <div class="chart-card" style="height: 250px; margin-bottom: 20px;">
+                    <div class="chart-card-header">
+                        <h3>Fatigue Level (%)</h3>
+                    </div>
+                    <div class="chart-wrap" style="height: 180px;">
+                        <canvas id="fatigueChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card" style="height: 250px; margin-bottom: 20px;">
+                    <div class="chart-card-header">
+                        <h3>Screen Distance (cm)</h3>
+                    </div>
+                    <div class="chart-wrap" style="height: 180px;">
+                        <canvas id="distanceChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card" style="height: 250px;">
+                    <div class="chart-card-header">
+                        <h3>Blink Rate (per min)</h3>
+                    </div>
+                    <div class="chart-wrap" style="height: 180px;">
+                        <canvas id="blinkChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-col">
+                <div class="metric-card yellow">
+                    <div class="mc-top"><span class="mc-icon">⚡</span> <span class="mc-label">Activity</span></div>
+                    <div class="mc-val" id="activity">--</div>
+                </div>
+                <div class="metric-card dark">
+                    <div class="mc-top"><span class="mc-icon">📏</span> <span class="mc-label">Distance</span></div>
+                    <div class="mc-val" id="distance">--</div>
+                </div>
+                <div class="metric-card light">
+                    <div class="mc-top"><span class="mc-icon">👁</span> <span class="mc-label">Blinks</span></div>
+                    <div class="mc-val" id="blink">--</div>
+                </div>
+
+                <div class="task-card" style="margin-top: 20px;">
+                    <div class="task-header">
+                        <h3>AI Assistant</h3>
+                        <button id="clearChatBtn" title="Clear chat" style="background:transparent;border:1.5px solid rgba(0,0,0,0.12);color:var(--gray);font-size:0.72rem;font-weight:500;padding:4px 12px;border-radius:20px;cursor:pointer;letter-spacing:0.03em;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--dark)';this.style.color='var(--dark)';" onmouseout="this.style.borderColor='rgba(0,0,0,0.12)';this.style.color='var(--gray)';">Clear</button>
+                    </div>
+                    <div class="chat-messages" id="chatBody" style="max-height: 200px;"></div>
+                    <div class="chat-input-row">
+                        <input type="text" id="chatInput" class="chat-in" placeholder="Ask AI...">
+                        <button class="chat-send-btn" id="sendChatBtn">→</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="/static/camera.js"></script>
+<script src="/static/dashboard.js"></script>
+</body>
+</html>

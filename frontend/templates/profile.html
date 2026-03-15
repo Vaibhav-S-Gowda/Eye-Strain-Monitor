@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile | Neural Nexus</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+    <style>
+        :root {
+            --primary: var(--yellow);
+            --secondary: #f4d35e;
+            --accent: #ffeb3b;
+            --glass: rgba(255, 255, 255, 0.04);
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --glass-strong: rgba(0, 0, 0, 0.4);
+            --nexus-gradient: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(30px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .profile-container {
+            max-width: 750px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        /* --- Account Tabs --- */
+        .account-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: -1px;
+            padding: 0 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .account-tab {
+            padding: 12px 24px;
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-bottom: none;
+            border-radius: 16px 16px 0 0;
+            color: var(--dark);
+            opacity: 0.5;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            backdrop-filter: blur(10px);
+        }
+
+        .account-tab:hover {
+            opacity: 0.8;
+            background: rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .account-tab.active {
+            background: rgba(255, 255, 255, 0.6);
+            color: var(--dark);
+            opacity: 1;
+            border-top: 2.5px solid var(--primary);
+            padding-bottom: 14px;
+            transform: translateY(0);
+        }
+
+        .tab-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .profile-card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(40px) saturate(180%);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 0 28px 28px 28px;
+            padding: 48px;
+            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            animation: slideUpFade 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+            color: var(--dark);
+        }
+
+        .profile-card::after {
+            content: '';
+            position: absolute;
+            top: -100px; right: -100px;
+            width: 300px; height: 300px;
+            background: var(--nexus-gradient);
+            filter: blur(140px);
+            opacity: 0.1;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+            margin-bottom: 48px;
+            position: relative;
+        }
+
+        .avatar-container {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            cursor: pointer;
+        }
+
+        .profile-avatar {
+            width: 100%;
+            height: 100%;
+        }
+
+        .avatar-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            border-radius: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+            color: white;
+            font-size: 1.4rem;
+        }
+
+        .avatar-container:hover .avatar-overlay { opacity: 1; }
+        .avatar-container:hover .profile-avatar { transform: scale(1.05) rotate(5deg); }
+
+        .profile-title h2 { 
+            margin: 0; 
+            font-size: 2.2rem; 
+            letter-spacing: -1px; 
+            color: var(--dark);
+            background: none;
+            -webkit-text-fill-color: initial;
+        }
+        .profile-title p { margin: 8px 0 0; color: rgba(0, 0, 0, 0.5); font-weight: 500; font-size: 1rem; }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+        }
+
+        .form-group.full { grid-column: span 2; }
+
+        label {
+            display: block;
+            margin-bottom: 12px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--dark);
+            opacity: 0.6;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 16px 20px;
+            background: rgba(0, 0, 0, 0.03);
+            border: 1.5px solid rgba(0, 0, 0, 0.08);
+            border-radius: 16px;
+            color: var(--dark);
+            font-size: 1rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: inherit;
+            font-weight: 500;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+            transform: translateY(-1px);
+        }
+
+        input::placeholder { color: #999; }
+
+        select option { background: white; color: var(--dark); }
+
+        .section-header {
+            grid-column: span 2;
+            padding: 32px 0 16px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .section-header span {
+            height: 1px;
+            flex: 1;
+            background: linear-gradient(to right, rgba(0, 0, 0, 0.1), transparent);
+        }
+
+        .section-header h3 { font-size: 0.9rem; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: var(--dark); opacity: 0.4; }
+
+        .actions {
+            margin-top: 48px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .save-btn {
+            background: var(--nexus-gradient);
+            border: none;
+            padding: 18px 48px;
+            border-radius: 20px;
+            color: var(--dark);
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.4s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.1rem;
+            box-shadow: 0 20px 40px rgba(232, 200, 74, 0.25);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .save-btn::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: 0.5s;
+        }
+
+        .save-btn:hover::before { left: 100%; }
+        .save-btn:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 30px 60px rgba(232, 200, 74, 0.35);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            background: var(--primary);
+            color: var(--dark);
+            padding: 16px 32px;
+            border-radius: 20px;
+            font-weight: 700;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            animation: slideIn 0.5s forwards;
+        }
+
+        @keyframes slideIn { from { transform: translateX(50px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        .header-greeting h1 {
+            color: #000 !important; /* Making the font dark as requested */
+            font-weight: 800;
+        }
+        .sub-greeting {
+            color: rgba(0, 0, 0, 0.6) !important;
+        }
+    </style>
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="logo-svg"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+                </div>
+                <span class="logo-text">Neural Nexus</span>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/" class="sidebar-link" title="Dashboard">
+                    <span class="s-icon">📊</span>
+                    <span class="s-label">Dashboard</span>
+                </a>
+                <a href="/real-time" class="sidebar-link" title="Real-Time">
+                    <span class="s-icon">👁️</span>
+                    <span class="s-label">Real-Time</span>
+                </a>
+                <a href="/camera" class="sidebar-link" title="Camera">
+                    <span class="s-icon">📷</span>
+                    <span class="s-label">Camera</span>
+                </a>
+                <a href="/analytics" class="sidebar-link" title="Analytics">
+                    <span class="s-icon">📈</span>
+                    <span class="s-label">Analytics</span>
+                </a>
+                <a href="/timeline" class="sidebar-link" title="Timeline">
+                    <span class="s-icon">⏳</span>
+                    <span class="s-label">Timeline</span>
+                </a>
+            </nav>
+            <div class="sidebar-bottom">
+                <a href="/profile" class="sidebar-link active" title="Profile">
+                    <div class="sidebar-avatar" id="sidebar-avatar-container">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                    <span class="s-label" id="user-name">User</span>
+                </a>
+                <a href="/logout" class="sidebar-link logout" title="Logout">
+                    <span class="s-icon">🚪</span>
+                    <span class="s-label">Logout</span>
+                </a>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-header">
+                <div class="header-greeting">
+                    <h1>Nexus Identity</h1>
+                    <p class="sub-greeting">Customize your AI assistant persona</p>
+                </div>
+            </header>
+
+            <div class="profile-container">
+                <!-- Account Tabs -->
+                <div class="account-tabs" id="account-tabs-container">
+                    <!-- Loaded dynamically -->
+                </div>
+
+                <div class="profile-card">
+                    <div class="profile-header">
+                        <input type="file" id="avatar-input" style="display: none" accept="image/*">
+                        <div class="avatar-container" onclick="document.getElementById('avatar-input').click()">
+                            <div class="profile-avatar avatar-wow" id="avatar-display">
+                                <i class="fas fa-user-astronaut"></i>
+                            </div>
+                            <div class="avatar-overlay">
+                                <i class="fas fa-camera"></i>
+                            </div>
+                        </div>
+                        <div class="profile-title">
+                            <h2 id="display-name">Profile Settings</h2>
+                            <p id="display-role">Personalize your Neural Nexus experience</p>
+                            <div class="size-hint" style="font-size: 0.72rem; color: var(--gray); margin-top: 8px; font-weight: 500; opacity: 0.8;">
+                                <i class="fas fa-info-circle"></i> Recommended: JPG/PNG, Max 10MB
+                            </div>
+                        </div>
+                    </div>
+
+                    <form id="profile-form">
+                        <div class="form-grid">
+                            <div class="section-header">
+                                <h3>Identity</h3>
+                                <span></span>
+                            </div>
+                            <div class="form-group">
+                                <label>Username</label>
+                                <input type="text" id="username" placeholder="Login name">
+                            </div>
+                            <div class="form-group">
+                                <label>Display Name</label>
+                                <input type="text" id="full_name" placeholder="How AI addresses you">
+                            </div>
+                            <div class="form-group full">
+                                <label>Profession / Role</label>
+                                <select id="role">
+                                    <option value="Software Engineer">Software Engineer</option>
+                                    <option value="Student">Student</option>
+                                    <option value="Data Analyst">Data Analyst</option>
+                                    <option value="Writer">Writer</option>
+                                    <option value="Gamer">Gamer</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+
+                            <div class="section-header">
+                                <h3>Health Goals</h3>
+                                <span></span>
+                            </div>
+                            <div class="form-group">
+                                <label>Max Screen Time (min/day)</label>
+                                <input type="number" id="goal_screen_time">
+                            </div>
+                            <div class="form-group">
+                                <label>Target Blink Rate (/min)</label>
+                                <input type="number" id="goal_blink_rate">
+                            </div>
+
+                            <div class="section-header">
+                                <h3>Neural Preferences</h3>
+                                <span></span>
+                            </div>
+                            <div class="form-group">
+                                <label>AI Coaching Style</label>
+                                <select id="pref_coaching">
+                                    <option value="Friendly">Friendly & Encouraging</option>
+                                    <option value="Professional">Professional & Direct</option>
+                                    <option value="Strict">Strict & Disciplined</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Smart Notifications</label>
+                                <select id="pref_notifications">
+                                    <option value="true">Enabled</option>
+                                    <option value="false">Disabled</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="actions">
+                            <button type="submit" class="save-btn">
+                                <i class="fas fa-save"></i> Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast" class="toast">Profile updated successfully!</div>
+
+    <script>
+        let currentUsername = "";
+
+        async function loadProfile() {
+            const res = await fetch('/api/profile');
+            const data = await res.json();
+            
+            if (data) {
+                currentUsername = data.username;
+                document.getElementById('username').value = data.username || '';
+                document.getElementById('full_name').value = data.full_name || '';
+                document.getElementById('role').value = data.role || 'Other';
+                document.getElementById('display-name').innerText = data.full_name || data.username || 'User Profile';
+                document.getElementById('display-role').innerText = data.role || 'Neural Nexus Intelligence';
+                
+                if (data.avatar_url) {
+                    document.getElementById('avatar-display').innerHTML = `<img src="${data.avatar_url}" alt="Avatar">`;
+                }
+
+                if (data.goals) {
+                    document.getElementById('goal_screen_time').value = data.goals.screen_time || 480;
+                    document.getElementById('goal_blink_rate').value = data.goals.blink_rate || 15;
+                }
+                
+                if (data.preferences) {
+                    document.getElementById('pref_coaching').value = data.preferences.coaching_style || 'Friendly';
+                    document.getElementById('pref_notifications').value = String(data.preferences.notifications !== false);
+                }
+
+                initTabs();
+            }
+        }
+
+        function initTabs() {
+            const container = document.getElementById('account-tabs-container');
+            const accounts = JSON.parse(localStorage.getItem('neuralNexusAccounts') || '[]');
+            
+            container.innerHTML = '';
+            accounts.forEach(acc => {
+                const isActive = acc.username === currentUsername;
+                const tab = document.createElement('div');
+                tab.className = `account-tab ${isActive ? 'active' : ''}`;
+                tab.innerHTML = `
+                    ${acc.avatar_url ? `<img src="${acc.avatar_url}" class="tab-avatar">` : '<i class="fas fa-user-circle"></i>'}
+                    <span>${acc.username}</span>
+                `;
+                if (!isActive) {
+                    tab.onclick = () => switchAccount(acc.username);
+                }
+                container.appendChild(tab);
+            });
+        }
+
+        async function switchAccount(username) {
+            const res = await fetch('/api/switch-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username })
+            });
+            if (res.ok) {
+                window.location.reload();
+            } else {
+                alert("Failed to switch account.");
+            }
+        }
+
+        // Handle Avatar Upload
+        document.getElementById('avatar-input').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Client-side size check (10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                alert("File too large! Please choose an image smaller than 10MB.");
+                e.target.value = ''; // Reset input
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('avatar', file);
+
+            const res = await fetch('/api/upload-avatar', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById('avatar-display').innerHTML = `<img src="${data.avatar_url}" alt="Avatar">`;
+                showToast("Identity updated!");
+            } else {
+                alert("Upload failed. Image might be too large or invalid format.");
+            }
+        });
+
+        document.getElementById('profile-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const profile = {
+                username: document.getElementById('username').value,
+                full_name: document.getElementById('full_name').value,
+                role: document.getElementById('role').value,
+                goals: {
+                    screen_time: parseInt(document.getElementById('goal_screen_time').value),
+                    blink_rate: parseInt(document.getElementById('goal_blink_rate').value)
+                },
+                preferences: {
+                    coaching_style: document.getElementById('pref_coaching').value,
+                    notifications: document.getElementById('pref_notifications').value === 'true'
+                }
+            };
+
+            const res = await fetch('/api/profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(profile)
+            });
+
+            if (res.ok) {
+                showToast("Neural profile synchronized!");
+                loadProfile();
+            } else {
+                const data = await res.json();
+                alert(data.error || "Sync failed.");
+            }
+        });
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', 3000);
+        }
+
+        loadProfile();
+    </script>
+</body>
+</html>

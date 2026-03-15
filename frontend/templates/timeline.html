@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural Nexus — Timeline</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+<div id="toast-container"></div>
+
+<div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="logo-svg"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>
+            <span class="logo-text">Neural Nexus</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/" class="sidebar-link" title="Dashboard">
+                <span class="s-icon">📊</span>
+                <span class="s-label">Dashboard</span>
+            </a>
+            <a href="/real-time" class="sidebar-link" title="Real-Time">
+                <span class="s-icon">👁️</span>
+                <span class="s-label">Real-Time</span>
+            </a>
+            <a href="/camera" class="sidebar-link" title="Camera">
+                <span class="s-icon">📷</span>
+                <span class="s-label">Camera</span>
+            </a>
+            <a href="/analytics" class="sidebar-link" title="Analytics">
+                <span class="s-icon">📈</span>
+                <span class="s-label">Analytics</span>
+            </a>
+            <a href="/timeline" class="sidebar-link active" title="Timeline">
+                <span class="s-icon">⏳</span>
+                <span class="s-label">Timeline</span>
+            </a>
+        </nav>
+        <div class="sidebar-bottom">
+            <a href="/profile" class="sidebar-link" title="Profile">
+                <div class="sidebar-avatar" id="sidebar-avatar-container">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <span class="s-label" id="sidebar-user-name">User</span>
+            </a>
+            <a href="/logout" class="sidebar-link logout" title="Logout">
+                <span class="s-icon">🚪</span>
+                <span class="s-label">Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="top-header">
+            <div class="header-greeting">
+                <h1>Productivity Timeline</h1>
+                <p class="sub-greeting">Your daily activity and focus telemetry</p>
+            </div>
+            <div class="header-nav">
+                <a href="/" class="pill">Dashboard</a>
+                <a href="/real-time" class="pill">Real-Time</a>
+                <a href="/camera" class="pill">Camera</a>
+                <a href="/analytics" class="pill">Analytics</a>
+            </div>
+        </header>
+
+        <div class="content-grid" style="grid-template-columns: 1fr;">
+            <div class="chart-card">
+                <div class="chart-card-header">
+                    <h3>Your Activity Flow</h3>
+                </div>
+                <div class="timeline-x-axis" style="margin-bottom: 30px;">
+                    <span>12:00 AM</span><span>06:00 AM</span><span>12:00 PM</span><span>06:00 PM</span><span>12:00 AM</span>
+                </div>
+                <div id="timeline-container" class="timeline-container" style="height: 100px;"></div>
+                <div class="timeline-legend" style="margin-top: 30px; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; font-size: 0.85rem; color: var(--gray);">
+                    <span style="display: flex; align-items:center; gap: 6px;"><div style="width:14px; height:14px; border-radius:4px; background:#00d2ff;"></div>Coding</span>
+                    <span style="display: flex; align-items:center; gap: 6px;"><div style="width:14px; height:14px; border-radius:4px; background:#ff4b2b;"></div>Reading</span>
+                    <span style="display: flex; align-items:center; gap: 6px;"><div style="width:14px; height:14px; border-radius:4px; background:#f1c40f;"></div>Browsing</span>
+                    <span style="display: flex; align-items:center; gap: 6px;"><div style="width:14px; height:14px; border-radius:4px; background:#00b09b;"></div>Watching</span>
+                    <span style="display: flex; align-items:center; gap: 6px;"><div style="width:14px; height:14px; border-radius:4px; background:#9b59b6;"></div>Gaming</span>
+                    <span style="display: flex; align-items:center; gap: 6px;"><div style="width:14px; height:14px; border-radius:4px; background:#7f8c8d;"></div>Idle</span>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="/static/dashboard.js"></script>
+<script>
+// ── Timeline Renderer ──────────────────────────────────────────
+const ACTIVITY_COLORS = {
+    "Coding":        "#00d2ff",
+    "Reading":       "#ff4b2b",
+    "Browsing":      "#f1c40f",
+    "Watching":      "#00b09b",
+    "Gaming":        "#9b59b6",
+    "Watching Video":"#00b09b",
+    "Idle":          "#7f8c8d"
+};
+
+async function renderTimeline() {
+    const container = document.getElementById('timeline-container');
+    if (!container) return;
+    try {
+        const res = await fetch('/api/timeline');
+        const segments = await res.json();
+
+        if (!segments || segments.length === 0) {
+            container.innerHTML = `
+                <div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--gray);font-size:0.9rem;">
+                    No activity recorded today. Start the Camera Diagnostic to begin tracking.
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = '';
+        // Create a relative track bar
+        const track = document.createElement('div');
+        track.style.cssText = 'position:relative;width:100%;height:100%;border-radius:8px;overflow:hidden;background:rgba(255,255,255,0.05);';
+
+        segments.forEach(seg => {
+            const block = document.createElement('div');
+            const color = ACTIVITY_COLORS[seg.activity] || '#7f8c8d';
+            block.style.cssText = `
+                position: absolute;
+                left: ${seg.start}%;
+                width: ${seg.width}%;
+                height: 100%;
+                background: ${color};
+                opacity: 0.85;
+                transition: opacity 0.2s;
+                cursor: pointer;
+            `;
+            // Tooltip on hover
+            const time = new Date(seg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            block.title = `${seg.activity} at ${time}`;
+            block.addEventListener('mouseenter', () => block.style.opacity = '1');
+            block.addEventListener('mouseleave', () => block.style.opacity = '0.85');
+            track.appendChild(block);
+        });
+
+        container.appendChild(track);
+    } catch(e) {
+        container.innerHTML = `<div style="color:var(--gray);padding:20px;">Could not load timeline data.</div>`;
+        console.error("Timeline error:", e);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', renderTimeline);
+</script>
+</body>
+</html>
