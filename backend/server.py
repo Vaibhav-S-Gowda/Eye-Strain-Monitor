@@ -246,7 +246,6 @@ def api_timeline():
     # Build a day timeline from today's logs
     midnight_dt = datetime.datetime.combine(datetime.date.today(), datetime.time.min)
     midnight_ms  = midnight_dt.timestamp() * 1000
-    end_of_day_ms = midnight_ms + 86400000  # 24h window
 
     today_logs = list(
         logs.find({"user_id": session['user_id'], "timestamp": {"$gte": midnight_ms}})
@@ -279,7 +278,7 @@ def api_timeline():
 
 
 def _get_summary_data(user_id):
-    import time, datetime
+    import datetime
     # Start of today (midnight)
     midnight = datetime.datetime.combine(datetime.date.today(), datetime.time.min).timestamp() * 1000
     
@@ -289,7 +288,6 @@ def _get_summary_data(user_id):
     if not today_logs:
         return {"total_blinks": 0, "screen_time_minutes": 0, "avg_health_score": 0}
         
-    avg_blink_rate = sum(log.get("blink_rate", 0) for log in today_logs) / len(today_logs)
     total_score = sum(log.get("health_score", 0) for log in today_logs)
     avg_score = total_score / len(today_logs)
     
