@@ -1,9 +1,8 @@
-import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
 # Start by mocking the MongoDB client before server import to prevent connection errors
-with patch('pymongo.MongoClient') as mock_mongo:
+with patch('pymongo.MongoClient'):
     from backend.server import app, chat
 
 class TestChatResilience(unittest.TestCase):
