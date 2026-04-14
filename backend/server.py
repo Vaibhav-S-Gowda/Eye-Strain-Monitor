@@ -12,7 +12,9 @@ from functools import wraps
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-
+import logging
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
 
 app = Flask(
     __name__,
@@ -537,6 +539,9 @@ def chat():
     return jsonify({"reply": reply})
 
 def start_server():
+    import webbrowser, threading
+    threading.Timer(1.2, lambda: webbrowser.open("http://127.0.0.1:5000")).start()
+    print("\n  \033[92m* Running on http://127.0.0.1:5000\033[0m")
     app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
 
 @app.route("/api/switch-session", methods=["POST"])
@@ -559,4 +564,7 @@ def switch_session():
     return jsonify({"error": "User not found"}), 404
 
 if __name__ == "__main__":
-    start_server()
+    import webbrowser, threading
+    threading.Timer(1.2, lambda: webbrowser.open("http://127.0.0.1:5000")).start()
+    print("\n  \033[92m* Running on http://127.0.0.1:5000\033[0m")
+    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
