@@ -4,245 +4,303 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Neural Nexus — Dashboard</title>
+    <meta name="description" content="Neural Nexus AI eye health monitoring dashboard — real-time fatigue, blink rate, and posture tracking.">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
     <!-- MediaPipe Vision for Background Tracking -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
 </head>
 
-<body>
+<body class="db-body">
 <div id="toast-container"></div>
 
 <!-- Hidden Camera Elements for Background Tracking -->
-<video class="input_video" style="position: absolute; left: -10000px; top: 0; width: 640px; height: 480px;"></video>
-<canvas class="output_canvas" width="800" height="600" style="position: absolute; left: -10000px; top: 0;"></canvas>
-<video id="pip_video" style="position: absolute; left: -10000px; top: 0; width: 640px; height: 480px;" autoplay muted playsinline></video>
+<video class="input_video" style="position:absolute;left:-10000px;top:0;width:640px;height:480px;"></video>
+<canvas class="output_canvas" width="800" height="600" style="position:absolute;left:-10000px;top:0;"></canvas>
+<video id="pip_video" style="position:absolute;left:-10000px;top:0;width:640px;height:480px;" autoplay muted playsinline></video>
 
-<!-- Layout Wrapper -->
-<div class="app-layout">
+<!-- ═══════════════════════════════════════════════ -->
+<!-- APP SHELL                                       -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="db-shell">
 
-    <!-- Sidebar -->
-    <aside class="sidebar">
-        <div class="sidebar-logo">
-            <div class="logo-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="logo-svg"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+    <!-- ── SIDEBAR ── -->
+    <aside class="db-sidebar">
+        <div class="db-sidebar__logo">
+            <div class="db-sidebar__logo-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
             </div>
-            <span class="logo-text">Neural Nexus</span>
+            <span class="db-sidebar__logo-text">Neural Nexus</span>
         </div>
-        <nav class="sidebar-nav">
-            <a href="/" class="sidebar-link active" title="Dashboard">
-                <span class="s-icon">📊</span>
-                <span class="s-label">Dashboard</span>
+
+        <nav class="db-sidebar__nav">
+            <a href="/" class="db-sidebar__link db-sidebar__link--active" id="nav-dashboard">
+                <span class="db-sidebar__icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                </span>
+                <span class="db-sidebar__label">Dashboard</span>
             </a>
-            <a href="/real-time" class="sidebar-link" title="Real-Time">
-                <span class="s-icon">👁️</span>
-                <span class="s-label">Real-Time</span>
+            <a href="/real-time" class="db-sidebar__link" id="nav-realtime">
+                <span class="db-sidebar__icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+                </span>
+                <span class="db-sidebar__label">Real-Time</span>
             </a>
-            <a href="/camera" class="sidebar-link" title="Camera">
-                <span class="s-icon">📷</span>
-                <span class="s-label">Camera</span>
+            <a href="/camera" class="db-sidebar__link" id="nav-camera">
+                <span class="db-sidebar__icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                </span>
+                <span class="db-sidebar__label">Camera</span>
             </a>
-            <a href="/analytics" class="sidebar-link" title="Analytics">
-                <span class="s-icon">📈</span>
-                <span class="s-label">Analytics</span>
+            <a href="/analytics" class="db-sidebar__link" id="nav-analytics">
+                <span class="db-sidebar__icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                </span>
+                <span class="db-sidebar__label">Analytics</span>
             </a>
-            <a href="/timeline" class="sidebar-link" title="Timeline">
-                <span class="s-icon">⏳</span>
-                <span class="s-label">Timeline</span>
+            <a href="/timeline" class="db-sidebar__link" id="nav-timeline">
+                <span class="db-sidebar__icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </span>
+                <span class="db-sidebar__label">Timeline</span>
             </a>
         </nav>
-        <div class="sidebar-bottom">
-            <a href="/profile" class="sidebar-link" title="Profile">
-                <div class="sidebar-avatar" id="sidebar-avatar-container">
-                    <i class="fas fa-user-circle"></i>
+
+        <div class="db-sidebar__bottom">
+            <a href="/profile" class="db-sidebar__link db-sidebar__link--profile">
+                <div class="db-sidebar__avatar" id="sidebar-avatar-container">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 </div>
-                <span class="s-label" id="sidebar-user-name">User</span>
+                <span class="db-sidebar__label db-sidebar__label--name" id="sidebar-user-name">User</span>
             </a>
-            <a href="/logout" class="sidebar-link logout" title="Logout">
-                <span class="s-icon">🚪</span>
-                <span class="s-label">Logout</span>
+            <a href="/logout" class="db-sidebar__link db-sidebar__link--logout">
+                <span class="db-sidebar__icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                </span>
+                <span class="db-sidebar__label">Logout</span>
             </a>
         </div>
     </aside>
 
-    <!-- Main Content -->
-    <main class="main-content">
+    <!-- ── MAIN ── -->
+    <main class="db-main">
 
-        <!-- Top Header -->
-        <header class="top-header">
-            <div class="header-greeting">
-                <h1>Welcome in, <span id="header-user-name">User</span></h1>
-                <p class="sub-greeting">Here's your smart Neural Nexus overview</p>
+        <!-- Header Row -->
+        <header class="db-header">
+            <div class="db-header__left">
+                <h1 class="db-header__greeting">Good day, <span id="header-user-name">User</span> 👋</h1>
+                <p class="db-header__sub">Here's your eye health overview for today</p>
             </div>
-            <div class="header-nav">
-                <a href="/" class="pill active">Dashboard</a>
-                <a href="/real-time" class="pill">Real-Time</a>
-                <a href="/camera" class="pill">Camera</a>
-                <a href="/analytics" class="pill">Analytics</a>
-            </div>
-            <div class="header-actions">
-                <div class="status-badge" id="status-indicator">
-                    <span class="status-dot offline"></span>
-                    <span id="system-status">Offline</span>
+            <div class="db-header__right">
+                <div class="db-status" id="status-indicator">
+                    <span class="db-status__dot offline" id="status-dot"></span>
+                    <span class="db-status__text" id="system-status">Offline</span>
+                </div>
+                <div class="db-sensitivity-wrap">
+                    <select id="fatigue-sensitivity" class="db-sensitivity">
+                        <option value="relaxed">😌 Relaxed</option>
+                        <option value="normal" selected>⚡ Normal</option>
+                        <option value="strict">🎯 Strict</option>
+                    </select>
                 </div>
             </div>
         </header>
 
-        <!-- Content Grid -->
-        <div class="content-grid">
+        <!-- ── DASHBOARD GRID ── -->
+        <div class="db-grid">
 
-            <!-- Left Column -->
-            <div class="left-col">
+            <!-- ════════════════════════ LEFT COLUMN ════════════════════════ -->
+            <div class="db-col db-col--left">
 
                 <!-- Profile Card -->
-                <div class="profile-card">
-                    <div class="avatar-ring" id="dashboard-avatar-container">
-                        <div class="avatar-wow">
-                            <i class="fas fa-user-astronaut"></i>
+                <div class="db-card db-profile-card">
+                    <div class="db-profile-card__glow"></div>
+                    <div class="db-profile-card__avatar-wrap" id="dashboard-avatar-container">
+                        <div class="db-profile-card__avatar">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                         </div>
                     </div>
-                    <div class="profile-info">
-                        <h3 id="profile-display-name">User</h3>
-                        <span class="profile-badge" id="health-badge">Good</span>
+                    <div class="db-profile-card__info">
+                        <h3 class="db-profile-card__name" id="profile-display-name">User</h3>
+                        <span class="db-profile-card__badge" id="health-badge">Good</span>
                     </div>
-                    <div class="profile-stats">
-                        <div class="pstat">
-                            <span class="pstat-val" id="blinkText">0</span>
-                            <span class="pstat-label">Blinks/min</span>
+                    <div class="db-profile-card__stats">
+                        <div class="db-pstat">
+                            <span class="db-pstat__val" id="blinkText">0</span>
+                            <span class="db-pstat__label">Blinks/min</span>
                         </div>
-                        <div class="pstat-div"></div>
-                        <div class="pstat">
-                            <span class="pstat-val" id="screenText">0</span>
-                            <span class="pstat-label">Screen min</span>
+                        <div class="db-pstat__div"></div>
+                        <div class="db-pstat">
+                            <span class="db-pstat__val" id="screenText">0</span>
+                            <span class="db-pstat__label">Screen min</span>
                         </div>
-                        <div class="pstat-div"></div>
-                        <div class="pstat">
-                            <span class="pstat-val" id="fatigue-stat">0%</span>
-                            <span class="pstat-label">Fatigue</span>
+                        <div class="db-pstat__div"></div>
+                        <div class="db-pstat">
+                            <span class="db-pstat__val" id="fatigue-stat">0%</span>
+                            <span class="db-pstat__label">Fatigue</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- Metric Cards -->
-                <div class="metric-cards">
-                    <div class="metric-card yellow">
-                        <div class="mc-top">
-                            <span class="mc-icon">👁</span>
-                            <span class="mc-label">Blink Rate</span>
+                <div class="db-metric-card db-metric-card--yellow">
+                    <div class="db-metric-card__header">
+                        <div class="db-metric-card__icon-wrap">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
                         </div>
-                        <div class="mc-val" id="blink-card-val">-- <small>/ min</small></div>
-                        <div class="mc-bar-wrap"><div class="mc-bar" id="blink-bar" style="width:0%"></div></div>
+                        <span class="db-metric-card__label">Blink Rate</span>
                     </div>
-                    <div class="metric-card dark">
-                        <div class="mc-top">
-                            <span class="mc-icon">🖥</span>
-                            <span class="mc-label">Screen Time</span>
+                    <div class="db-metric-card__val" id="blink-card-val">-- <small>/ min</small></div>
+                    <div class="db-metric-card__bar-track"><div class="db-metric-card__bar" id="blink-bar" style="width:0%"></div></div>
+                </div>
+
+                <div class="db-metric-card db-metric-card--dark">
+                    <div class="db-metric-card__header">
+                        <div class="db-metric-card__icon-wrap">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
                         </div>
-                        <div class="mc-val" id="screen-card-val">0 <small>min</small></div>
-                        <div class="mc-bar-wrap"><div class="mc-bar" id="screen-bar" style="width:0%"></div></div>
+                        <span class="db-metric-card__label">Session Time</span>
                     </div>
-                    <div class="metric-card light">
-                        <div class="mc-top">
-                            <span class="mc-icon">📏</span>
-                            <span class="mc-label">Distance</span>
+                    <div class="db-metric-card__val"><span id="session-timer-val">00:00:00</span></div>
+                    <div class="db-metric-card__sub" id="predictive-fatigue">Prediction calculating...</div>
+                    <div class="db-metric-card__bar-track"><div class="db-metric-card__bar" id="screen-bar" style="width:100%;background:#22c55e;"></div></div>
+                </div>
+
+                <div class="db-metric-card db-metric-card--light">
+                    <div class="db-metric-card__header">
+                        <div class="db-metric-card__icon-wrap">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35z"/><path d="M6 18h12"/><path d="M6 14h12"/><rect x="8" y="10" width="8" height="8"/></svg>
                         </div>
-                        <div class="mc-val" id="dist-card-val">-- <small>cm</small></div>
-                        <div class="mc-bar-wrap"><div class="mc-bar" id="dist-bar" style="width:0%"></div></div>
+                        <span class="db-metric-card__label">Distance</span>
                     </div>
+                    <div class="db-metric-card__val" id="dist-card-val">-- <small>cm</small></div>
+                    <div class="db-metric-card__bar-track"><div class="db-metric-card__bar" id="dist-bar" style="width:0%"></div></div>
                 </div>
 
             </div>
 
-            <!-- Center Column - Charts -->
-            <div class="center-col">
+            <!-- ════════════════════════ CENTER COLUMN ════════════════════════ -->
+            <div class="db-col db-col--center">
 
-                <!-- Progress Chart Card -->
-                <div class="chart-card">
-                    <div class="chart-card-header">
+                <!-- Primary Chart Card -->
+                <div class="db-card db-chart-card">
+                    <div class="db-chart-card__header">
                         <div>
-                            <h3>Blink Rate</h3>
-                            <p class="chart-sub">Today's timeline</p>
+                            <h2 class="db-chart-card__title">Blink Rate</h2>
+                            <p class="db-chart-card__sub">Today's monitoring timeline</p>
                         </div>
-                        <div class="chart-legend">
-                            <span class="legend-dot yellow-dot"></span> Blinks
-                            <span class="legend-dot dark-dot"></span> Fatigue
+                        <div class="db-chart-card__legend">
+                            <span class="db-legend-chip db-legend-chip--yellow">Blinks</span>
+                            <span class="db-legend-chip db-legend-chip--dark">Fatigue</span>
                         </div>
                     </div>
-                    <div class="chart-wrap" style="height:180px;">
+                    <div class="db-chart-wrap">
                         <canvas id="blinkChart"></canvas>
                     </div>
                 </div>
 
-                <!-- Time Tracker / Timer Card -->
-                <div class="timer-card">
-                    <div class="timer-header">
+                <!-- Eye Strain Ring Card -->
+                <div class="db-card db-strain-card">
+                    <div class="db-strain-card__header">
                         <div>
-                            <h3>Eye Strain Index</h3>
-                            <p class="chart-sub" id="bg-status">Live fatigue level — Monitoring Offline</p>
+                            <h2 class="db-strain-card__title">Eye Strain Index</h2>
+                            <p class="db-strain-card__sub" id="bg-status">Live fatigue — monitoring offline</p>
                         </div>
-                        <button id="startBgBtn" class="timer-btn" style="background: var(--yellow); color: #1a1a1a; border: none; cursor: pointer;">⚡ Start Background Tracking</button>
-                        <button id="stopBgBtn" class="timer-btn" style="display:none; background: #ef4444; color: white; border: none; cursor: pointer;">🛑 Stop Tracking</button>
-                        <button id="pipBtn" class="timer-btn" style="display:none; background: var(--dark); color: white; border: none; cursor: pointer;">🖼️ Open Floating Window</button>
-                        <button id="maskToggleBtn" class="timer-btn" style="display:none; background: var(--gray); color: white; border: none; cursor: pointer; margin-left: 5px;">Hide Mask</button>
-                        <p id="pip-info" style="display:none; color: #22c55e; margin-top: 5px; font-size: 0.75rem; font-weight: 600;">✨ Background Window Active</p>
-                    </div>
-                    <div class="timer-ring-wrap">
-                        <svg viewBox="0 0 120 120" class="ring-svg">
-                            <circle class="ring-track" cx="60" cy="60" r="50" />
-                            <circle class="ring-fill strain-ring" cx="60" cy="60" r="50" id="strain-circle"
-                                stroke-dasharray="0 314" />
-                        </svg>
-                        <div class="ring-center">
-                            <div class="ring-big-num" id="strainPercent">0%</div>
-                            <div class="ring-label">Strain</div>
+                        <div class="db-strain-card__actions">
+                            <button id="startBgBtn" class="db-btn db-btn--yellow">⚡ Start Tracking</button>
+                            <button id="stopBgBtn"  class="db-btn db-btn--danger" style="display:none;">🛑 Stop</button>
+                            <button id="pipBtn"     class="db-btn db-btn--ghost"  style="display:none;">🖼️ Float</button>
+                            <button id="maskToggleBtn" class="db-btn db-btn--ghost" style="display:none;">Hide Mask</button>
                         </div>
                     </div>
-                    <div class="timer-stats">
-                        <div class="ts-item"><span class="ts-icon green"></span> Low Risk</div>
-                        <div class="ts-item"><span class="ts-icon yellow"></span> Moderate</div>
-                        <div class="ts-item"><span class="ts-icon red"></span> High Risk</div>
+                    <p id="pip-info" style="display:none;color:#22c55e;font-size:0.75rem;font-weight:600;margin-bottom:8px;">✨ Background Window Active</p>
+
+                    <div class="db-strain-body">
+                        <!-- Ring -->
+                        <div class="db-ring-wrap">
+                            <svg viewBox="0 0 120 120" class="db-ring-svg">
+                                <circle class="db-ring-track" cx="60" cy="60" r="50"/>
+                                <circle class="db-ring-fill strain-ring" cx="60" cy="60" r="50" id="strain-circle" stroke-dasharray="0 314"/>
+                            </svg>
+                            <div class="db-ring-center">
+                                <div class="db-ring-num" id="strainPercent">0%</div>
+                                <div class="db-ring-label" id="strainRiskLevel">Safe</div>
+                            </div>
+                        </div>
+
+                        <!-- Right side of ring -->
+                        <div class="db-strain-meta">
+                            <p class="db-strain-rec" id="strainRecommendation">Start tracking to get live analysis.</p>
+                            <div class="db-strain-legend">
+                                <div class="db-strain-legend__item"><span class="db-strain-legend__dot" style="background:#22c55e"></span><span>Low Risk</span></div>
+                                <div class="db-strain-legend__item"><span class="db-strain-legend__dot" style="background:#e8c84a"></span><span>Moderate</span></div>
+                                <div class="db-strain-legend__item"><span class="db-strain-legend__dot" style="background:#ef4444"></span><span>High Risk</span></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
             </div>
 
-            <!-- Right Column - Tasks / Chat -->
-            <div class="right-col">
+            <!-- ════════════════════════ RIGHT COLUMN ════════════════════════ -->
+            <div class="db-col db-col--right">
 
-                <div class="task-card" style="flex:1;">
-                    <div class="task-header">
-                        <h3>AI Health Assistant</h3>
-                        <button id="clearChatBtn" title="Clear chat" style="background:transparent;border:1.5px solid rgba(0,0,0,0.12);color:var(--gray);font-size:0.72rem;font-weight:500;padding:4px 12px;border-radius:20px;cursor:pointer;letter-spacing:0.03em;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--dark)';this.style.color='var(--dark)';" onmouseout="this.style.borderColor='rgba(0,0,0,0.12)';this.style.color='var(--gray)';">Clear</button>
+                <!-- AI Chat Card -->
+                <div class="db-card db-chat-card">
+                    <div class="db-chat-card__header">
+                        <div class="db-chat-card__title-row">
+                            <div class="db-chat-card__ai-dot"></div>
+                            <h3 class="db-chat-card__title">AI Health Assistant</h3>
+                        </div>
+                        <button id="clearChatBtn" class="db-btn db-btn--subtle">Clear</button>
                     </div>
 
-                    <div class="chat-messages" id="chatBody">
-                        <div class="chat-msg bot">Hello! I'm your AI Neural Nexus assistant. Ask me about fatigue, posture, breaks, or your stats!</div>
+                    <div class="db-chat-messages" id="chatBody">
+                        <div class="db-chat-msg db-chat-msg--bot">Hello! I'm your Neural Nexus AI assistant. Ask me about fatigue, posture, breaks, or your stats!</div>
                     </div>
 
-                    <div class="chat-input-row">
-                        <input type="text" id="chatInput" class="chat-in" placeholder="Ask about Neural Nexus...">
-                        <button class="chat-send-btn" id="sendChatBtn">→</button>
+                    <div class="db-chat-input-row">
+                        <input type="text" id="chatInput" class="db-chat-input" placeholder="Ask Neural Nexus...">
+                        <button class="db-chat-send" id="sendChatBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        </button>
                     </div>
                 </div>
 
                 <!-- Quick Actions Card -->
-                <div class="quick-card">
-                    <h4>Quick Actions</h4>
-                    <a href="/camera" class="qaction yellow-btn">📷 Camera Check</a>
-                    <a href="/real-time" class="qaction outline-btn">👁 Live Metrics</a>
-                    <a href="/analytics" class="qaction outline-btn">📊 Analytics</a>
+                <div class="db-card db-actions-card">
+                    <h4 class="db-actions-card__title">Quick Actions</h4>
+                    <div class="db-actions-list">
+                        <a href="/camera" class="db-action db-action--primary">
+                            <span class="db-action__icon">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                            </span>
+                            Camera Check
+                        </a>
+                        <a href="/real-time" class="db-action db-action--ghost">
+                            <span class="db-action__icon">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+                            </span>
+                            Live Metrics
+                        </a>
+                        <a href="/analytics" class="db-action db-action--ghost">
+                            <span class="db-action__icon">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                            </span>
+                            Analytics
+                        </a>
+                    </div>
                 </div>
 
             </div>
-        </div>
 
+        </div><!-- /db-grid -->
     </main>
-</div>
+</div><!-- /db-shell -->
 
 <script src="/static/camera.js"></script>
 <script src="/static/dashboard.js"></script>
