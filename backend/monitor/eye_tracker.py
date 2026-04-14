@@ -128,6 +128,7 @@ def start_eye_monitor():
     from backend.monitor.fatigue_model import calculate_ers
     from backend.monitor.health_advisor import give_advice
     from backend.monitor.idle_detector import get_idle_time
+    from backend.monitor.alert_manager import fatigue_alerts
     
     client = MongoClient("mongodb://localhost:27017/", serverSelectionTimeoutMS=2000)
     db = client.eye_monitor
@@ -188,6 +189,10 @@ def start_eye_monitor():
                     # Calculate new ERS using updated arguments
                     fatigue = calculate_ers(blink_rate, smooth_dist, smooth_tilt)
                     health_score = 100 - fatigue
+                    
+                    # Dispatch visual Windows notification if fatigue is high (handles own cooldown)
+                    if fatigue >= 65:
+                        fatigue_alerts.send_fatigue_alert(fatigue, blink_rate, smooth_dist, muted)
                     
                     if is_slouching:
                         advice = "⚠️ Sit up straight! Text-Neck detected."
