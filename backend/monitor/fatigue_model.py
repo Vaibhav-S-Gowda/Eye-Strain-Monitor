@@ -18,9 +18,10 @@ def calculate_ers(blink_rate, distance, tilt=0):
     MIN_DISTANCE_CM = 50
     HEAD_TILT_THRESHOLD = 15
 
-    blink_score = max(0, (10 - blink_rate) * 5)
-    dist_score = max(0, (MIN_DISTANCE_CM - distance))
-    tilt_score = max(0, (tilt - HEAD_TILT_THRESHOLD))
+    # Scale individual metrics to 0-100 range before weighting
+    blink_score = max(0, (15 - blink_rate) * 6.66)     # 0 blinks = ~100
+    dist_score = max(0, (MIN_DISTANCE_CM - distance) * 2.5) # 10cm distance = 100
+    tilt_score = max(0, (tilt - HEAD_TILT_THRESHOLD) * 3.33)  # 45deg tilt = ~100
 
     score = blink_score * 0.4 + dist_score * 0.3 + tilt_score * 0.3
 
