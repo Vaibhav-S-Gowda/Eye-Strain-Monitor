@@ -8,12 +8,90 @@ let distanceChart;
 let weeklyChart;
 let map;
 
+// Session Timer Tracking
+let sessionUptimeSeconds = 0;
+setInterval(() => {
+    const statusEl = document.getElementById('system-status');
+    if (statusEl && statusEl.textContent === 'Monitoring') {
+        sessionUptimeSeconds++;
+        const el = document.getElementById('session-timer-val');
+        if (el) {
+            const h = Math.floor(sessionUptimeSeconds / 3600).toString().padStart(2, '0');
+            const m = Math.floor((sessionUptimeSeconds % 3600) / 60).toString().padStart(2, '0');
+            const s = (sessionUptimeSeconds % 60).toString().padStart(2, '0');
+            el.innerHTML = `${h}:${m}:${s}`;
+        }
+    }
+}, 1000);
+
+// Global Personalization Settings
+let fatigueThresholdTarget = 65; // Default normal
+const sensitivityDict = { 'strict': 50, 'normal': 65, 'relaxed': 80 };
+
+function applyAmbientGlow(fatigue) {
+    let shadow = 'none';
+    if (fatigue > fatigueThresholdTarget) {
+        shadow = 'inset 0 0 120px rgba(239, 68, 68, 0.25)'; // Red glow
+    } else if (fatigue > fatigueThresholdTarget - 20) {
+        shadow = 'inset 0 0 80px rgba(232, 200, 74, 0.15)'; // Yellow glow
+    }
+    document.body.style.boxShadow = shadow;
+    document.body.style.transition = 'box-shadow 2s ease-in-out';
+}
+
+function calculatePredictiveFatigue(historyData, threshold) {
+    if(!historyData || historyData.length < 5) return 'Prediction calculating...';
+    
+    const recent = historyData.slice(-5);
+    const first = recent[0];
+    const last = recent[recent.length - 1];
+
+    const fatigueDiff = last.fatigue - first.fatigue; // Positive if gaining fatigue
+    const timeDiffMs = last.timestamp - first.timestamp;
+    
+    if (fatigueDiff <= 0) return 'Fatigue stable. Keep it up!';
+
+    const fatiguePerMinute = (fatigueDiff / (timeDiffMs / 60000));
+    if (fatiguePerMinute < 1) return 'Fatigue stable. Keep it up!';
+
+    // Time remaining until threshold
+    const fatigueRemaining = Math.max(0, threshold - last.fatigue);
+    const minutesRemaining = fatigueRemaining / fatiguePerMinute;
+
+    if (minutesRemaining < 1) return '⚠️ Fatigue threshold imminent!';
+    if (minutesRemaining > 60) return 'Fatigue stable. Keep it up!';
+
+    return `⚠️ Fatigue likely in ~${Math.round(minutesRemaining)} min`;
+}
+
 function createGradient(ctx, colorStart, colorEnd) {
     const g = ctx.createLinearGradient(0, 0, 0, 400);
     g.addColorStop(0, colorStart);
     g.addColorStop(1, colorEnd);
     return g;
 }
+
+const horizontalLinePlugin = {
+    id: 'horizontalLine',
+    beforeDraw: (chart) => {
+        if(chart.config.options.plugins.horizontalLine) {
+            const yValue = chart.config.options.plugins.horizontalLine.y;
+            const yAxis = chart.scales.y;
+            const yPixel = yAxis.getPixelForValue(yValue);
+            const ctx = chart.ctx;
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(chart.chartArea.left, yPixel);
+            ctx.lineTo(chart.chartArea.right, yPixel);
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+};
+Chart.register(horizontalLinePlugin);
 
 function initCharts() {
     Chart.defaults.color = '#888';
@@ -30,8 +108,15 @@ function initCharts() {
                 datasets: [{
                     label: "Blink Rate",
                     data: [],
-                    backgroundColor: createGradient(ctx, 'rgba(232,200,74,0.8)', 'rgba(232,200,74,0.2)'),
-                    borderColor: '#e8c84a',
+                    backgroundColor: (ctx) => {
+                        const v = ctx.raw;
+                        if (v !== undefined && v < 10) return 'rgba(239,68,68,0.8)';
+                        return createGradient(ctx.chart.ctx, 'rgba(232,200,74,0.8)', 'rgba(232,200,74,0.2)');
+                    },
+                    borderColor: (ctx) => {
+                        const v = ctx.raw;
+                        return (v !== undefined && v < 10) ? '#ef4444' : '#e8c84a';
+                    },
                     borderRadius: 6,
                     borderWidth: 0
                 }]
@@ -39,7 +124,11 @@ function initCharts() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                plugins: { 
+                    legend: { display: false },
+                    horizontalLine: { y: 10 },
+                    tooltip: { enabled: true }
+                },
                 scales: {
                     y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888' }, beginAtZero: true },
                     x: { grid: { display: false }, ticks: { color: '#888', maxRotation: 0, maxTicksLimit: 6 } }
@@ -165,6 +254,99 @@ function showToast(message) {
 }
 
 // ============================================================
+// In-App Fatigue Modal Bypass
+// ============================================================
+let appAlertLastShown = 0;
+let appAlertSnoozedUntil = 0;
+
+function showFatigueModal(fatigue, blinkRate, distance) {
+    const now = Date.now();
+    // Cooldown check (5 minutes base, or custom snooze timer)
+    if (now < appAlertSnoozedUntil) return;
+    if (now - appAlertLastShown < 300000) return; // 5 min default
+
+    // If modal already exists, remove it or don't create a new one
+    if (document.getElementById('fatigue-modal')) return;
+
+    appAlertLastShown = now;
+
+    // Proactive AI Warning Injection
+    if(typeof appendChat === 'function') {
+        appendChat('bot', "⚠️ **Proactive Alert:** I noticed your fatigue index has surged. Please step away from the screen to rest your eyes.");
+    }
+
+    const modal = document.createElement('div');
+    modal.id = 'fatigue-modal';
+    modal.innerHTML = `
+        <div style="
+            position: fixed; bottom: 20px; right: 20px; width: 340px;
+            background: rgba(40, 40, 45, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.1); border-left: 4px solid #ef4444; border-radius: 12px;
+            color: #fff; font-family: 'Inter', sans-serif; position: relative; z-index: 99999;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            transform: translateY(20px); opacity: 0; transition: all 0.3s ease;
+        ">
+            <div style="padding: 16px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="font-size: 20px;">⚠️</span>
+                    <h3 style="margin: 0; font-size: 16px; font-weight: 600;">High Fatigue Detected</h3>
+                </div>
+                <p style="margin: 0 0 12px 0; font-size: 13px; color: #aaa;">Your eyes are showing signs of heavy strain. Please take a moment to rest.</p>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+                    <div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px;">
+                        <div style="font-size: 11px; color: #888;">Fatigue</div>
+                        <div style="font-size: 14px; font-weight: 600; color: #ef4444;">${Math.round(fatigue)}%</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px;">
+                        <div style="font-size: 11px; color: #888;">Distance</div>
+                        <div style="font-size: 14px; font-weight: 600; color: #00d2ff;">${Math.round(distance)} cm</div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button id="modal-btn-break" style="
+                        flex: 1; padding: 8px; border: none; border-radius: 6px; cursor: pointer;
+                        background: #ef4444; color: white; font-weight: 500; font-family: 'Inter', sans-serif;
+                    ">Take a Break</button>
+                    <button id="modal-btn-snooze" style="
+                        flex: 1; padding: 8px; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; cursor: pointer;
+                        background: transparent; color: #ccc; font-weight: 500; font-family: 'Inter', sans-serif;
+                    ">Snooze 5m</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Entrance Animation
+    setTimeout(() => {
+        modal.firstElementChild.style.transform = 'translateY(0)';
+        modal.firstElementChild.style.opacity = '1';
+    }, 50);
+
+    const closeModal = () => {
+        modal.firstElementChild.style.transform = 'translateY(20px)';
+        modal.firstElementChild.style.opacity = '0';
+        setTimeout(() => modal.remove(), 300);
+    };
+
+    document.getElementById('modal-btn-break').addEventListener('click', () => {
+        appAlertSnoozedUntil = Date.now() + (5 * 60000); 
+        closeModal();
+    });
+
+    document.getElementById('modal-btn-snooze').addEventListener('click', () => {
+        appAlertSnoozedUntil = Date.now() + (5 * 60000); 
+        closeModal();
+    });
+
+    // Auto dismiss after 10s
+    setTimeout(() => {
+        if (document.getElementById('fatigue-modal')) closeModal();
+    }, 10000);
+}
+
+
+// ============================================================
 // Strain Ring
 // ============================================================
 function setStrainRing(percent) {
@@ -177,14 +359,23 @@ function setStrainRing(percent) {
     const el = document.getElementById('strainPercent');
     if (el) el.textContent = Math.round(percent) + '%';
 
+    const riskLabel = document.getElementById('strainRiskLevel');
+    const recLabel = document.getElementById('strainRecommendation');
+
     // Color & Glow: green < 33, yellow 33-66, red > 66
     if (percent < 33) {
+        if (riskLabel) { riskLabel.textContent = "Safe"; riskLabel.style.color = "#888"; }
+        if (recLabel) { recLabel.textContent = "Great job, keep it up!"; recLabel.style.color = "#888"; }
         circle.style.stroke = '#22c55e';
         circle.style.filter = 'drop-shadow(0 0 8px rgba(34, 197, 94, 0.4))';
     } else if (percent < 66) {
+        if (riskLabel) { riskLabel.textContent = "Moderate"; riskLabel.style.color = "#e8c84a"; }
+        if (recLabel) { recLabel.textContent = "Consider a 1-minute stretch."; recLabel.style.color = "#e8c84a"; }
         circle.style.stroke = '#e8c84a';
         circle.style.filter = 'drop-shadow(0 0 12px rgba(232, 200, 74, 0.5))';
     } else {
+        if (riskLabel) { riskLabel.textContent = "High Risk"; riskLabel.style.color = "#ef4444"; }
+        if (recLabel) { recLabel.textContent = "Time for a 10-minute break."; recLabel.style.color = "#ef4444"; }
         circle.style.stroke = '#ef4444';
         circle.style.filter = 'drop-shadow(0 0 15px rgba(239, 68, 68, 0.6))';
     }
@@ -242,15 +433,23 @@ async function loadData() {
         // Health badge
         setHealthBadge(fatigue);
 
+        // Predictive Fatigue Extrapolation
+        const predLabel = document.getElementById('predictive-fatigue');
+        if (predLabel) predLabel.innerText = calculatePredictiveFatigue(data, fatigueThresholdTarget);
+
         // System status
         const statusEl = document.getElementById('system-status');
         const dotEl = document.querySelector('.status-dot');
         if (data && data.length > 0) {
             if (statusEl) statusEl.textContent = 'Monitoring';
             if (dotEl) { dotEl.classList.remove('offline'); dotEl.classList.add('online'); }
+            
+            // Apply Dynamic Body Subconscious Glow
+            applyAmbientGlow(fatigue);
         } else {
             if (statusEl) statusEl.textContent = 'Offline';
             if (dotEl) { dotEl.classList.remove('online'); dotEl.classList.add('offline'); }
+            document.body.style.boxShadow = 'none';
         }
 
         // --- Update Charts ---
@@ -285,6 +484,11 @@ async function loadData() {
 
         if (data && data.length > 0 && data[data.length - 1].advice) {
             showToast(data[data.length - 1].advice);
+        }
+
+        // In-App Web Modal for High Fatigue Bypass
+        if (fatigue >= fatigueThresholdTarget) {
+            showFatigueModal(fatigue, blinkRate, distance);
         }
 
     } catch (e) {
@@ -388,7 +592,13 @@ function appendChat(role, text) {
     const body = document.getElementById('chatBody');
     if (!body) return;
     const div = document.createElement('div');
-    div.className = `chat-msg ${role === 'user' ? 'user' : 'bot'}`;
+    // Support both old and new design system classes
+    const isNewDesign = body.classList.contains('db-chat-messages');
+    if (isNewDesign) {
+        div.className = `db-chat-msg ${role === 'user' ? 'db-chat-msg--user' : 'db-chat-msg--bot'}`;
+    } else {
+        div.className = `chat-msg ${role === 'user' ? 'user' : 'bot'}`;
+    }
     // Render basic markdown: bold, line breaks
     div.innerHTML = text
         .replace(/&/g, '&amp;')
@@ -414,7 +624,8 @@ async function sendChat() {
     // Show loading
     const chatBody = document.getElementById('chatBody');
     const loadDiv = document.createElement('div');
-    loadDiv.className = 'chat-msg loading';
+    const isNewDesign = chatBody && chatBody.classList.contains('db-chat-messages');
+    loadDiv.className = isNewDesign ? 'db-chat-msg db-chat-msg--loading' : 'chat-msg loading';
     loadDiv.id = 'chat-loading';
     loadDiv.innerHTML = '<span style="opacity:0.5">Thinking...</span>';
     if (chatBody) chatBody.appendChild(loadDiv);
@@ -461,24 +672,44 @@ async function clearChat() {
 }
 
 // ============================================================
-// Heatmap (Analytics)
+// Historical Data (Heatmap & Weekly Chart)
 // ============================================================
-async function initHeatmap() {
+async function initHistoricalData() {
     const container = document.getElementById('heatmap-container');
-    if (!container) return;
 
     try {
         const res = await fetch('/api/history');
         const history = await res.json();
 
-        container.innerHTML = '';
-        history.forEach(day => {
-            const cell = document.createElement('div');
-            cell.className = `heatmap-cell level-${day.level || 1}`;
-            cell.title = `${day.date}: Score ${day.score}`;
-            container.appendChild(cell);
-        });
-    } catch (e) { console.error("Heatmap error:", e); }
+        // Populate Heatmap
+        if (container) {
+            container.innerHTML = '';
+            history.forEach(day => {
+                const cell = document.createElement('div');
+                cell.className = `heatmap-cell level-${day.level || 1}`;
+                cell.title = `${day.date}: Score ${day.score}`;
+                container.appendChild(cell);
+            });
+        }
+
+        // Populate Weekly Progress Chart (last 7 days of history)
+        if (typeof weeklyChart !== 'undefined' && weeklyChart !== null) {
+            const last7Days = history.slice(-7);
+            const labels = last7Days.map(d => {
+                const dateObj = new Date(d.date);
+                // In JS Date, we must ensure the time parsing is correct or just map 'YYYY-MM-DD' properly
+                const parts = d.date.split('-');
+                const localDate = new Date(parts[0], parts[1] - 1, parts[2]);
+                return localDate.toLocaleDateString('en-US', { weekday: 'short' });
+            });
+            const data = last7Days.map(d => d.score);
+            
+            weeklyChart.data.labels = labels;
+            weeklyChart.data.datasets[0].data = data;
+            weeklyChart.update('none');
+        }
+
+    } catch (e) { console.error("Historical data error:", e); }
 }
 
 // ============================================================
@@ -528,8 +759,23 @@ function initMap() {
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
     initCharts();
-    initHeatmap();
+    initHistoricalData();
     initMap();
+    
+    // Load Personalization Options
+    const sensSelect = document.getElementById('fatigue-sensitivity');
+    if(sensSelect) {
+        const saved = localStorage.getItem('nexus_sensitivity') || 'normal';
+        sensSelect.value = saved;
+        fatigueThresholdTarget = sensitivityDict[saved];
+
+        sensSelect.addEventListener('change', (e) => {
+            const val = e.target.value;
+            localStorage.setItem('nexus_sensitivity', val);
+            fatigueThresholdTarget = sensitivityDict[val];
+        });
+    }
+
     loadProfile();
     loadChatHistory();
     loadData();
@@ -555,4 +801,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Clear Chat button
     const clearBtn = document.getElementById('clearChatBtn');
     if (clearBtn) clearBtn.addEventListener('click', clearChat);
+
+    // Global Keydown for Snooze (Ctrl + Shift + S)
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 's') {
+            e.preventDefault();
+            appAlertSnoozedUntil = Date.now() + (10 * 60000); // 10 min snooze
+            showToast("System Snoozed: All fatigue alerts suppressed for 10 minutes.");
+            if (document.getElementById('fatigue-modal')) {
+                document.getElementById('fatigue-modal').remove();
+            }
+        }
+    });
 });
