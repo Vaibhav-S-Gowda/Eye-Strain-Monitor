@@ -3,16 +3,170 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neural Nexus — Real-Time</title>
+    <title>Neural Nexus — Real-Time Guardian</title>
+    <meta name="description" content="Real-time eye health guardian with intelligent interventions and predictive analytics.">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
     <!-- MediaPipe Vision for Background Tracking -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <style>
+    /* ═══════════════════════════════════════════════════════
+       REAL-TIME GUARDIAN — Cream Theme
+       ═══════════════════════════════════════════════════════ */
+    .rt-main { padding: 24px 32px; }
+
+    /* Header */
+    .rt-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+    .rt-header h1 { font-size: 1.4rem; font-weight: 800; color: var(--dark); }
+    .rt-header__sub { color: var(--gray); font-size: 0.82rem; }
+    .rt-header__controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .rt-btn {
+        padding: 7px 16px; border-radius: 10px; border: 1px solid var(--border);
+        font-size: 0.78rem; font-weight: 600; cursor: pointer;
+        font-family: 'Inter', sans-serif; transition: all 0.2s;
+    }
+    .rt-btn--start { background: var(--yellow); color: var(--dark); border-color: var(--yellow); }
+    .rt-btn--start:hover { filter: brightness(1.05); }
+    .rt-btn--stop { background: #ef4444; color: #fff; border-color: #ef4444; display: none; }
+    .rt-btn--mode { background: var(--white); color: var(--dark); }
+    .rt-btn--mode.strict { background: #ef4444; color: #fff; border-color: #ef4444; }
+
+    /* Grid Layout */
+    .rt-grid { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
+
+    /* ── Eye Risk Score (Hero) ── */
+    .rt-risk {
+        background: var(--white); border: 1px solid var(--border); border-radius: 18px;
+        padding: 24px; box-shadow: var(--shadow-sm); text-align: center;
+        transition: border-color 0.5s, box-shadow 0.5s;
+        position: relative; overflow: hidden;
+    }
+    .rt-risk::before {
+        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+        transition: background 0.5s;
+    }
+    .rt-risk.safe { border-color: rgba(34,197,94,0.2); }
+    .rt-risk.safe::before { background: #22c55e; }
+    .rt-risk.caution { border-color: rgba(234,179,8,0.3); }
+    .rt-risk.caution::before { background: #eab308; }
+    .rt-risk.danger { border-color: rgba(239,68,68,0.3); box-shadow: 0 0 20px rgba(239,68,68,0.08); }
+    .rt-risk.danger::before { background: #ef4444; }
+
+    .rt-risk__label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray); }
+    .rt-risk__score { font-size: 3.5rem; font-weight: 800; line-height: 1; margin: 8px 0 4px; transition: color 0.5s; }
+    .rt-risk__status { font-size: 0.85rem; font-weight: 600; margin-bottom: 12px; }
+    .rt-risk__bar-wrap { height: 8px; background: var(--cream2); border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
+    .rt-risk__bar { height: 100%; border-radius: 4px; transition: width 0.5s, background 0.5s; }
+    .rt-risk__detail { display: flex; justify-content: center; gap: 24px; font-size: 0.72rem; color: var(--gray); }
+    .rt-risk__detail span { display: flex; align-items: center; gap: 4px; }
+
+    /* ── Metric Cards Row ── */
+    .rt-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .rt-metric {
+        background: var(--white); border: 1px solid var(--border); border-radius: 14px;
+        padding: 14px 16px; box-shadow: var(--shadow-sm); transition: transform 0.2s;
+    }
+    .rt-metric:hover { transform: translateY(-2px); }
+    .rt-metric__icon { font-size: 1.2rem; margin-bottom: 4px; }
+    .rt-metric__label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--gray); }
+    .rt-metric__val { font-size: 1.3rem; font-weight: 800; color: var(--dark); }
+    .rt-metric__sub { font-size: 0.68rem; color: var(--gray2); }
+
+    /* ── Charts ── */
+    .rt-chart-card {
+        background: var(--white); border: 1px solid var(--border); border-radius: 16px;
+        padding: 18px; box-shadow: var(--shadow-sm);
+    }
+    .rt-chart-card h3 { font-size: 0.82rem; font-weight: 700; color: var(--dark); margin-bottom: 10px; }
+    .rt-chart-wrap { height: 140px; position: relative; }
+
+    /* ── Right Panel ── */
+    .rt-panel { display: flex; flex-direction: column; gap: 12px; }
+
+    /* Session Tracker */
+    .rt-session {
+        background: var(--white); border: 1px solid var(--border); border-radius: 14px;
+        padding: 16px; box-shadow: var(--shadow-sm);
+    }
+    .rt-session h4 { font-size: 0.78rem; font-weight: 700; color: var(--dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .rt-session__row { display: flex; justify-content: space-between; font-size: 0.76rem; margin-bottom: 4px; }
+    .rt-session__label { color: var(--gray); }
+    .rt-session__val { font-weight: 700; color: var(--dark); }
+
+    /* Alert Feed */
+    .rt-alerts {
+        background: var(--white); border: 1px solid var(--border); border-radius: 14px;
+        padding: 16px; box-shadow: var(--shadow-sm); max-height: 220px; overflow-y: auto;
+    }
+    .rt-alerts h4 { font-size: 0.78rem; font-weight: 700; color: var(--dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .rt-alert-item {
+        padding: 8px 12px; border-radius: 8px; font-size: 0.74rem;
+        margin-bottom: 6px; line-height: 1.4; border-left: 3px solid;
+    }
+    .rt-alert-item.warn { background: #fef9c3; border-color: #eab308; color: #854d0e; }
+    .rt-alert-item.danger { background: #fef2f2; border-color: #ef4444; color: #991b1b; }
+    .rt-alert-item.info { background: #eff6ff; border-color: #3b82f6; color: #1e40af; }
+    .rt-alert-item.ok { background: #f0fdf4; border-color: #22c55e; color: #166534; }
+    .rt-alert-item__time { font-size: 0.62rem; color: inherit; opacity: 0.6; }
+
+    /* Intervention Panel */
+    .rt-intervention {
+        background: var(--white); border: 1px solid var(--border); border-radius: 14px;
+        padding: 16px; box-shadow: var(--shadow-sm); display: none;
+    }
+    .rt-intervention.visible { display: block; animation: rt-slide-in 0.3s ease; }
+    .rt-intervention h4 { font-size: 0.78rem; font-weight: 700; color: #dc2626; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .rt-intervention__steps { list-style: none; padding: 0; margin: 0; }
+    .rt-intervention__steps li {
+        font-size: 0.76rem; padding: 6px 0; color: var(--dark);
+        border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px;
+    }
+    .rt-intervention__steps li:last-child { border: none; }
+
+    @keyframes rt-slide-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Gamification */
+    .rt-gamification {
+        background: var(--white); border: 1px solid var(--border); border-radius: 14px;
+        padding: 16px; box-shadow: var(--shadow-sm);
+    }
+    .rt-gamification h4 { font-size: 0.78rem; font-weight: 700; color: var(--dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .rt-badge { display: inline-flex; align-items: center; gap: 4px; background: var(--cream); padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 600; color: var(--dark); margin-right: 6px; margin-bottom: 4px; }
+    .rt-streak { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 0.74rem; }
+    .rt-streak__fire { font-size: 1rem; }
+    .rt-streak__val { font-weight: 800; color: var(--dark); }
+    .rt-streak__label { color: var(--gray); }
+
+    /* AI Chat */
+    .rt-chat {
+        background: var(--white); border: 1px solid var(--border); border-radius: 14px;
+        padding: 16px; box-shadow: var(--shadow-sm); flex: 1;
+    }
+    .rt-chat h4 { font-size: 0.78rem; font-weight: 700; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+
+    /* Full-screen break overlay */
+    .rt-break-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.85); z-index: 9999;
+        display: none; align-items: center; justify-content: center;
+        flex-direction: column; color: #fff;
+    }
+    .rt-break-overlay.active { display: flex; }
+    .rt-break-overlay h2 { font-size: 2rem; font-weight: 800; margin-bottom: 8px; }
+    .rt-break-overlay p { font-size: 1.1rem; color: rgba(255,255,255,0.7); margin-bottom: 24px; }
+    .rt-break-overlay__timer { font-size: 4rem; font-weight: 800; color: var(--yellow); }
+    .rt-break-overlay__skip { margin-top: 20px; padding: 10px 24px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: #fff; font-size: 0.85rem; cursor: pointer; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+        .rt-grid { grid-template-columns: 1fr; }
+        .rt-metrics { grid-template-columns: repeat(2, 1fr); }
+    }
+    </style>
 </head>
 
 <body>
@@ -23,121 +177,140 @@
 <canvas class="output_canvas" width="800" height="600" style="position: absolute; left: -10000px; top: 0;"></canvas>
 <video id="pip_video" style="position: absolute; left: -10000px; top: 0; width: 640px; height: 480px;" autoplay muted playsinline></video>
 
+<!-- Break Enforcement Overlay -->
+<div class="rt-break-overlay" id="breakOverlay">
+    <h2>👁️ Time for a Break</h2>
+    <p>Look 20 feet away for 20 seconds — your eyes need this</p>
+    <div class="rt-break-overlay__timer" id="breakTimer">20</div>
+    <button class="rt-break-overlay__skip" id="breakSkip">Skip (not recommended)</button>
+</div>
+
 <div class="app-layout">
     <!-- Sidebar -->
-    <aside class="sidebar">
-        <div class="sidebar-logo">
-            <div class="logo-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="logo-svg"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+    <aside class="db-sidebar">
+        <div class="db-sidebar__logo">
+            <div class="db-sidebar__logo-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
             </div>
-            <span class="logo-text">Neural Nexus</span>
+            <span class="db-sidebar__logo-text">Neural Nexus</span>
         </div>
-        <nav class="sidebar-nav">
-            <a href="/" class="sidebar-link" title="Dashboard">
-                <span class="s-icon">📊</span>
-                <span class="s-label">Dashboard</span>
-            </a>
-            <a href="/real-time" class="sidebar-link active" title="Real-Time">
-                <span class="s-icon">👁️</span>
-                <span class="s-label">Real-Time</span>
-            </a>
-            <a href="/camera" class="sidebar-link" title="Camera">
-                <span class="s-icon">📷</span>
-                <span class="s-label">Camera</span>
-            </a>
-            <a href="/analytics" class="sidebar-link" title="Analytics">
-                <span class="s-icon">📈</span>
-                <span class="s-label">Analytics</span>
-            </a>
-            <a href="/timeline" class="sidebar-link" title="Timeline">
-                <span class="s-icon">⏳</span>
-                <span class="s-label">Timeline</span>
-            </a>
+        <nav class="db-sidebar__nav">
+            <a href="/" class="db-sidebar__link" id="nav-dashboard"><span class="db-sidebar__icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span><span class="db-sidebar__label">Dashboard</span></a>
+            <a href="/real-time" class="db-sidebar__link db-sidebar__link--active" id="nav-realtime"><span class="db-sidebar__icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg></span><span class="db-sidebar__label">Real-Time</span></a>
+            <a href="/camera" class="db-sidebar__link" id="nav-camera"><span class="db-sidebar__icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></span><span class="db-sidebar__label">Camera</span></a>
+            <a href="/analytics" class="db-sidebar__link" id="nav-analytics"><span class="db-sidebar__icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span><span class="db-sidebar__label">Analytics</span></a>
+            <a href="/timeline" class="db-sidebar__link" id="nav-timeline"><span class="db-sidebar__icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span><span class="db-sidebar__label">Timeline</span></a>
         </nav>
-        <div class="sidebar-bottom">
-            <a href="/profile" class="sidebar-link" title="Profile">
-                <div class="sidebar-avatar" id="sidebar-avatar-container">
-                    <i class="fas fa-user-circle"></i>
-                </div>
-                <span class="s-label" id="sidebar-user-name">User</span>
-            </a>
-            <a href="/logout" class="sidebar-link logout" title="Logout">
-                <span class="s-icon">🚪</span>
-                <span class="s-label">Logout</span>
-            </a>
+        <div class="db-sidebar__bottom">
+            <a href="/profile" class="db-sidebar__link db-sidebar__link--profile"><div class="db-sidebar__avatar" id="sidebar-avatar-container"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><span class="db-sidebar__label db-sidebar__label--name" id="sidebar-user-name">User</span></a>
+            <a href="/logout" class="db-sidebar__link db-sidebar__link--logout"><span class="db-sidebar__icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span><span class="db-sidebar__label">Logout</span></a>
         </div>
     </aside>
 
-    <main class="main-content">
-        <header class="top-header">
-            <div class="header-greeting">
-                <h1>Real-Time Monitoring</h1>
-                <p class="sub-greeting">Live telemetry & AI analysis — <span id="bg-status" style="color:var(--gray)">Monitoring Offline</span></p>
-                <button id="startBgBtn" class="pill" style="margin-top:10px; border:none; background:var(--yellow); color:black; cursor:pointer; font-weight:600;">⚡ Start Monitor</button>
-                <button id="stopBgBtn" class="pill" style="display:none; margin-top:10px; border:none; background:#ef4444; color:white; cursor:pointer; font-weight:600;">🛑 Stop Monitor</button>
-                <button id="pipBtn" class="pill" style="display:none; margin-top:10px; border:none; background:var(--dark); color:white; cursor:pointer; font-weight:600;">🖼️ Open PiP</button>
-                <button id="maskToggleBtn" class="pill" style="display:none; margin-top:10px; border:none; background:var(--gray); color:white; cursor:pointer; font-weight:600; margin-left: 5px;">Hide Mask</button>
+    <main class="main-content rt-main">
+        <!-- Header with Controls -->
+        <div class="rt-header">
+            <div>
+                <h1>Real-Time Guardian</h1>
+                <p class="rt-header__sub">Live eye health monitoring · <span id="bg-status" style="color:var(--gray)">Monitoring Offline</span></p>
             </div>
-            <div class="header-nav">
-                <a href="/" class="pill">Dashboard</a>
-                <a href="/real-time" class="pill active">Real-Time</a>
-                <a href="/camera" class="pill">Camera</a>
-                <a href="/analytics" class="pill">Analytics</a>
+            <div class="rt-header__controls">
+                <button class="rt-btn rt-btn--start" id="startBgBtn">⚡ Start Monitor</button>
+                <button class="rt-btn rt-btn--stop" id="stopBgBtn">🛑 Stop</button>
+                <button class="rt-btn rt-btn--mode" id="modeToggle">🔕 Silent Mode</button>
+                <button id="pipBtn" class="rt-btn" style="display:none;">🖼️ PiP</button>
+                <button id="maskToggleBtn" class="rt-btn" style="display:none;">Hide Mask</button>
             </div>
-        </header>
+        </div>
 
-        <div class="content-grid" style="grid-template-columns: 1fr 300px;">
-            <div class="left-col" style="grid-column: span 1;">
-                <div class="chart-card" style="height: 250px; margin-bottom: 20px;">
-                    <div class="chart-card-header">
-                        <h3>Fatigue Level (%)</h3>
-                    </div>
-                    <div class="chart-wrap" style="height: 180px;">
-                        <canvas id="fatigueChart"></canvas>
+        <div class="rt-grid">
+            <!-- ═══ LEFT COLUMN ═══ -->
+            <div style="display:flex; flex-direction:column; gap:14px;">
+
+                <!-- Eye Risk Score -->
+                <div class="rt-risk safe" id="riskCard">
+                    <span class="rt-risk__label">Eye Risk Score</span>
+                    <div class="rt-risk__score" id="riskScore" style="color:#22c55e;">0</div>
+                    <div class="rt-risk__status" id="riskStatus" style="color:#22c55e;">✅ Eyes are healthy</div>
+                    <div class="rt-risk__bar-wrap"><div class="rt-risk__bar" id="riskBar" style="width:0%;background:#22c55e;"></div></div>
+                    <div class="rt-risk__detail">
+                        <span>👁️ Blink: <strong id="riskBlink">--</strong>/min</span>
+                        <span>📏 Distance: <strong id="riskDist">--</strong>cm</span>
+                        <span>🧠 Fatigue: <strong id="riskFatigue">--</strong>%</span>
+                        <span>⏱️ Session: <strong id="riskSession">0m</strong></span>
                     </div>
                 </div>
 
-                <div class="chart-card" style="height: 250px; margin-bottom: 20px;">
-                    <div class="chart-card-header">
-                        <h3>Screen Distance (cm)</h3>
-                    </div>
-                    <div class="chart-wrap" style="height: 180px;">
-                        <canvas id="distanceChart"></canvas>
-                    </div>
+                <!-- Metric Cards -->
+                <div class="rt-metrics">
+                    <div class="rt-metric"><span class="rt-metric__icon">👁️</span><span class="rt-metric__label">Blink Rate</span><div class="rt-metric__val" id="rtBlink">--</div><span class="rt-metric__sub">per minute</span></div>
+                    <div class="rt-metric"><span class="rt-metric__icon">📏</span><span class="rt-metric__label">Distance</span><div class="rt-metric__val" id="rtDist">--</div><span class="rt-metric__sub">centimeters</span></div>
+                    <div class="rt-metric"><span class="rt-metric__icon">🧠</span><span class="rt-metric__label">Fatigue</span><div class="rt-metric__val" id="rtFatigue">--</div><span class="rt-metric__sub">index (0-100)</span></div>
+                    <div class="rt-metric"><span class="rt-metric__icon">⚡</span><span class="rt-metric__label">Activity</span><div class="rt-metric__val" id="activity" style="font-size:1rem;">--</div><span class="rt-metric__sub">detected</span></div>
                 </div>
 
-                <div class="chart-card" style="height: 250px;">
-                    <div class="chart-card-header">
-                        <h3>Blink Rate (per min)</h3>
-                    </div>
-                    <div class="chart-wrap" style="height: 180px;">
-                        <canvas id="blinkChart"></canvas>
-                    </div>
+                <!-- Charts -->
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                    <div class="rt-chart-card"><h3>Fatigue Trend</h3><div class="rt-chart-wrap"><canvas id="fatigueChart"></canvas></div></div>
+                    <div class="rt-chart-card"><h3>Blink Rate Trend</h3><div class="rt-chart-wrap"><canvas id="blinkChart"></canvas></div></div>
                 </div>
+                <div class="rt-chart-card"><h3>Screen Distance</h3><div class="rt-chart-wrap"><canvas id="distanceChart"></canvas></div></div>
             </div>
 
-            <div class="right-col">
-                <div class="metric-card yellow">
-                    <div class="mc-top"><span class="mc-icon">⚡</span> <span class="mc-label">Activity</span></div>
-                    <div class="mc-val" id="activity">--</div>
-                </div>
-                <div class="metric-card dark">
-                    <div class="mc-top"><span class="mc-icon">📏</span> <span class="mc-label">Distance</span></div>
-                    <div class="mc-val" id="distance">--</div>
-                </div>
-                <div class="metric-card light">
-                    <div class="mc-top"><span class="mc-icon">👁</span> <span class="mc-label">Blinks</span></div>
-                    <div class="mc-val" id="blink">--</div>
+            <!-- ═══ RIGHT PANEL ═══ -->
+            <div class="rt-panel">
+
+                <!-- Intervention Panel (hidden until needed) -->
+                <div class="rt-intervention" id="interventionPanel">
+                    <h4>🚨 Action Required</h4>
+                    <p style="font-size:0.74rem; color:var(--gray); margin-bottom:8px;" id="interventionReason">Your eye risk is elevated</p>
+                    <ol class="rt-intervention__steps" id="interventionSteps">
+                        <li>🔄 Blink 10 times slowly right now</li>
+                        <li>📏 Move back to arm's length distance</li>
+                        <li>👀 Look at something 20ft away for 20s</li>
+                    </ol>
                 </div>
 
-                <div class="task-card" style="margin-top: 20px;">
-                    <div class="task-header">
-                        <h3>AI Assistant</h3>
-                        <button id="clearChatBtn" title="Clear chat" style="background:transparent;border:1.5px solid rgba(0,0,0,0.12);color:var(--gray);font-size:0.72rem;font-weight:500;padding:4px 12px;border-radius:20px;cursor:pointer;letter-spacing:0.03em;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--dark)';this.style.color='var(--dark)';" onmouseout="this.style.borderColor='rgba(0,0,0,0.12)';this.style.color='var(--gray)';">Clear</button>
+                <!-- Session Tracker -->
+                <div class="rt-session">
+                    <h4>⏱️ Session Tracker</h4>
+                    <div class="rt-session__row"><span class="rt-session__label">Work Duration</span><span class="rt-session__val" id="sessDuration">0m</span></div>
+                    <div class="rt-session__row"><span class="rt-session__label">Time Since Break</span><span class="rt-session__val" id="sessSinceBreak">0m</span></div>
+                    <div class="rt-session__row"><span class="rt-session__label">Breaks Taken</span><span class="rt-session__val" id="sessBreaks">0</span></div>
+                    <div class="rt-session__row"><span class="rt-session__label">Alerts Triggered</span><span class="rt-session__val" id="sessAlerts">0</span></div>
+                </div>
+
+                <!-- Active Alerts Feed -->
+                <div class="rt-alerts">
+                    <h4>🔔 Live Alerts</h4>
+                    <div id="alertFeed">
+                        <div class="rt-alert-item info">Start monitoring to see real-time alerts here.</div>
                     </div>
-                    <div class="chat-messages" id="chatBody" style="max-height: 200px;"></div>
+                </div>
+
+                <!-- Gamification -->
+                <div class="rt-gamification">
+                    <h4>🏆 Health Score</h4>
+                    <div>
+                        <span class="rt-badge" id="complianceBadge">🎯 Compliance: --</span>
+                        <span class="rt-badge" id="blinkBadge">👁️ Blink Health: --</span>
+                    </div>
+                    <div class="rt-streak">
+                        <span class="rt-streak__fire">🔥</span>
+                        <span class="rt-streak__val" id="streakCount">0</span>
+                        <span class="rt-streak__label">minute safe streak</span>
+                    </div>
+                </div>
+
+                <!-- AI Chat -->
+                <div class="rt-chat">
+                    <h4>
+                        AI Assistant
+                        <button id="clearChatBtn" style="background:transparent;border:1px solid var(--border);color:var(--gray);font-size:0.68rem;padding:3px 10px;border-radius:6px;cursor:pointer;">Clear</button>
+                    </h4>
+                    <div class="chat-messages" id="chatBody" style="max-height:160px;"></div>
                     <div class="chat-input-row">
-                        <input type="text" id="chatInput" class="chat-in" placeholder="Ask AI...">
+                        <input type="text" id="chatInput" class="chat-in" placeholder="Ask about your eye health...">
                         <button class="chat-send-btn" id="sendChatBtn">→</button>
                     </div>
                 </div>
@@ -148,5 +321,214 @@
 
 <script src="/static/camera.js"></script>
 <script src="/static/dashboard.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+// REAL-TIME GUARDIAN ENGINE
+// ═══════════════════════════════════════════════════════════════
+
+let strictMode = false;
+let safeStreak = 0;
+let totalAlerts = 0;
+let breaksTaken = 0;
+let sessionStartTime = Date.now();
+let lastBreakTime = Date.now();
+let alertHistory = [];
+let lastRiskLevel = 'safe';
+
+// Mode Toggle
+const modeBtn = document.getElementById('modeToggle');
+modeBtn?.addEventListener('click', () => {
+    strictMode = !strictMode;
+    modeBtn.textContent = strictMode ? '🔴 Strict Mode' : '🔕 Silent Mode';
+    modeBtn.classList.toggle('strict', strictMode);
+});
+
+// Break overlay
+const breakOverlay = document.getElementById('breakOverlay');
+const breakSkip = document.getElementById('breakSkip');
+let breakInterval = null;
+breakSkip?.addEventListener('click', () => {
+    breakOverlay.classList.remove('active');
+    if (breakInterval) clearInterval(breakInterval);
+});
+
+function triggerBreak() {
+    breaksTaken++;
+    document.getElementById('sessBreaks').textContent = breaksTaken;
+    lastBreakTime = Date.now();
+    if (!strictMode) return;
+    breakOverlay.classList.add('active');
+    let secs = 20;
+    document.getElementById('breakTimer').textContent = secs;
+    breakInterval = setInterval(() => {
+        secs--;
+        document.getElementById('breakTimer').textContent = secs;
+        if (secs <= 0) { clearInterval(breakInterval); breakOverlay.classList.remove('active'); }
+    }, 1000);
+}
+
+// ── Compute Eye Risk Score (0-100) ──
+function computeRisk(fatigue, blinkRate, distance) {
+    let score = 0;
+    // Fatigue component (0-40)
+    score += Math.min(40, fatigue * 0.4);
+    // Blink rate component (0-30): healthy = 15-20/min
+    if (blinkRate < 8) score += 30;
+    else if (blinkRate < 12) score += 15;
+    else if (blinkRate > 25) score += 10;
+    // Distance component (0-30): healthy > 50cm
+    if (distance > 0 && distance < 35) score += 30;
+    else if (distance > 0 && distance < 50) score += 15;
+    return Math.min(100, Math.round(score));
+}
+
+function getRiskLevel(score) {
+    if (score < 30) return 'safe';
+    if (score < 60) return 'caution';
+    return 'danger';
+}
+
+function getRiskColor(level) {
+    return { safe: '#22c55e', caution: '#eab308', danger: '#ef4444' }[level];
+}
+
+function getRiskLabel(level) {
+    return { safe: '✅ Eyes are healthy', caution: '⚠️ Take care — strain building', danger: '🚨 High risk — action needed' }[level];
+}
+
+// ── Add Alert ──
+function pushAlert(message, type = 'info') {
+    totalAlerts++;
+    document.getElementById('sessAlerts').textContent = totalAlerts;
+    const feed = document.getElementById('alertFeed');
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const item = document.createElement('div');
+    item.className = `rt-alert-item ${type}`;
+    item.innerHTML = `<span class="rt-alert-item__time">${time}</span> ${message}`;
+    feed.prepend(item);
+    // Keep max 15 alerts
+    while (feed.children.length > 15) feed.removeChild(feed.lastChild);
+    alertHistory.push({ message, type, time: Date.now() });
+}
+
+// ── Show/Hide Intervention ──
+function updateIntervention(risk, blinkRate, distance, fatigue) {
+    const panel = document.getElementById('interventionPanel');
+    const reason = document.getElementById('interventionReason');
+    const steps = document.getElementById('interventionSteps');
+    if (risk < 40) { panel.classList.remove('visible'); return; }
+
+    panel.classList.add('visible');
+    let stepsHTML = '';
+    if (blinkRate < 10) {
+        reason.textContent = 'Your blink rate is critically low — dry eye risk is high';
+        stepsHTML += '<li>🔄 Blink 10 times slowly right now</li>';
+    }
+    if (distance > 0 && distance < 45) {
+        reason.textContent = 'You are too close to the screen';
+        stepsHTML += '<li>📏 Sit back to arm\'s length (~60cm)</li>';
+    }
+    if (fatigue > 60) {
+        reason.textContent = 'Fatigue is dangerously high';
+        stepsHTML += '<li>☕ Take a 5-minute break now</li>';
+        stepsHTML += '<li>👀 Look at something 20ft away for 20 seconds</li>';
+    }
+    if (!stepsHTML) stepsHTML = '<li>👀 Follow the 20-20-20 rule</li>';
+    steps.innerHTML = stepsHTML;
+}
+
+// ── Guardian Loop (runs every 2s) ──
+let lastAlertTime = {};
+
+function guardianTick() {
+    const t = window.latestTelemetry;
+    if (!t) return;
+
+    const fatigue = t.fatigue || 0;
+    const blinkRate = t.blink_rate || 0;
+    const distance = t.distance || 0;
+    const now = Date.now();
+
+    // Compute risk
+    const risk = computeRisk(fatigue, blinkRate, distance);
+    const level = getRiskLevel(risk);
+    const color = getRiskColor(level);
+
+    // Update Risk Card
+    const riskCard = document.getElementById('riskCard');
+    riskCard.className = 'rt-risk ' + level;
+    document.getElementById('riskScore').textContent = risk;
+    document.getElementById('riskScore').style.color = color;
+    document.getElementById('riskStatus').textContent = getRiskLabel(level);
+    document.getElementById('riskStatus').style.color = color;
+    document.getElementById('riskBar').style.width = risk + '%';
+    document.getElementById('riskBar').style.background = color;
+    document.getElementById('riskBlink').textContent = Math.round(blinkRate);
+    document.getElementById('riskDist').textContent = Math.round(distance);
+    document.getElementById('riskFatigue').textContent = Math.round(fatigue);
+
+    // Metrics
+    document.getElementById('rtBlink').textContent = Math.round(blinkRate);
+    document.getElementById('rtDist').textContent = Math.round(distance);
+    document.getElementById('rtFatigue').textContent = Math.round(fatigue);
+
+    // Session
+    const sessMin = Math.round((now - sessionStartTime) / 60000);
+    document.getElementById('sessDuration').textContent = sessMin + 'm';
+    document.getElementById('riskSession').textContent = sessMin + 'm';
+    const breakMin = Math.round((now - lastBreakTime) / 60000);
+    document.getElementById('sessSinceBreak').textContent = breakMin + 'm';
+
+    // Streak
+    if (risk < 30) { safeStreak++; } else { safeStreak = 0; }
+    document.getElementById('streakCount').textContent = Math.round(safeStreak / 30); // ~1 per minute at 2s ticks
+
+    // Compliance badge
+    const compliance = alertHistory.length > 0 ? Math.max(0, 100 - alertHistory.length * 5) : 100;
+    document.getElementById('complianceBadge').textContent = '🎯 Compliance: ' + compliance + '%';
+    document.getElementById('blinkBadge').textContent = '👁️ Blink: ' + (blinkRate >= 12 ? 'Healthy' : 'Low');
+
+    // Alerts (debounced per type)
+    function alertOnce(key, msg, type, cooldownMs = 30000) {
+        if (!lastAlertTime[key] || now - lastAlertTime[key] > cooldownMs) {
+            pushAlert(msg, type);
+            lastAlertTime[key] = now;
+        }
+    }
+
+    if (blinkRate > 0 && blinkRate < 8) alertOnce('lowBlink', `Blink rate critically low (${Math.round(blinkRate)}/min). Dry eye risk elevated.`, 'danger');
+    else if (blinkRate > 0 && blinkRate < 12) alertOnce('warnBlink', `Blink rate below healthy range (${Math.round(blinkRate)}/min).`, 'warn');
+    if (distance > 0 && distance < 35) alertOnce('closeDist', `Too close to screen (${Math.round(distance)}cm). Move back to prevent strain.`, 'danger');
+    else if (distance > 0 && distance < 50) alertOnce('warnDist', `Screen distance below recommended (${Math.round(distance)}cm).`, 'warn');
+    if (fatigue > 70) alertOnce('highFatigue', `Fatigue index is ${Math.round(fatigue)}%. Take a break soon.`, 'danger');
+    if (breakMin >= 25) alertOnce('needBreak', `${breakMin} minutes without a break. Consider the 20-20-20 rule.`, 'warn', 120000);
+
+    // Auto-trigger break in strict mode
+    if (strictMode && breakMin >= 25 && risk > 50) triggerBreak();
+
+    // Intervention panel
+    updateIntervention(risk, blinkRate, distance, fatigue);
+
+    // Risk state change alert
+    if (level !== lastRiskLevel) {
+        if (level === 'danger') pushAlert('Risk level elevated to DANGER. Immediate action recommended.', 'danger');
+        else if (level === 'safe' && lastRiskLevel !== 'safe') pushAlert('Risk level returned to safe. Great job! 🎉', 'ok');
+        lastRiskLevel = level;
+    }
+}
+
+// Start guardian loop
+setInterval(guardianTick, 2000);
+
+// Reset session on start
+document.getElementById('startBgBtn')?.addEventListener('click', () => {
+    sessionStartTime = Date.now();
+    lastBreakTime = Date.now();
+    totalAlerts = 0;
+    safeStreak = 0;
+    alertHistory = [];
+    document.getElementById('alertFeed').innerHTML = '<div class="rt-alert-item ok">Monitoring started. Eyes are being tracked. 🟢</div>';
+});
+</script>
 </body>
 </html>

@@ -3,6 +3,7 @@
 // ============================================================
 
 let blinkChart;
+let blinkChartMode = 'line'; // 'line' or 'bar'
 let fatigueChart;
 let distanceChart;
 let weeklyChart;
@@ -97,44 +98,167 @@ function initCharts() {
     Chart.defaults.color = '#888';
     Chart.defaults.font.family = "'Inter', sans-serif";
 
-    // 1. Blink Chart (Dashboard & Real-Time)
+    // 1. Blink vs Fatigue Dual-Line Chart (Dashboard)
     const elBlink = document.getElementById("blinkChart");
     if (elBlink) {
         const ctx = elBlink.getContext("2d");
         blinkChart = new Chart(ctx, {
-            type: 'bar',
+            type: 'line',
             data: {
                 labels: [],
-                datasets: [{
-                    label: "Blink Rate",
-                    data: [],
-                    backgroundColor: (ctx) => {
-                        const v = ctx.raw;
-                        if (v !== undefined && v < 10) return 'rgba(239,68,68,0.8)';
-                        return createGradient(ctx.chart.ctx, 'rgba(232,200,74,0.8)', 'rgba(232,200,74,0.2)');
+                datasets: [
+                    {
+                        label: "Blink Rate (per min)",
+                        data: [],
+                        borderColor: '#e8c84a',
+                        backgroundColor: 'rgba(232, 200, 74, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        yAxisID: 'y'
                     },
-                    borderColor: (ctx) => {
-                        const v = ctx.raw;
-                        return (v !== undefined && v < 10) ? '#ef4444' : '#e8c84a';
-                    },
-                    borderRadius: 6,
-                    borderWidth: 0
-                }]
+                    {
+                        label: "Fatigue Index (%)",
+                        data: [],
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        tension: 0.4,
+                        yAxisID: 'y1'
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
                 plugins: { 
                     legend: { display: false },
-                    horizontalLine: { y: 10 },
-                    tooltip: { enabled: true }
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 15, 15, 0.9)',
+                        titleColor: '#e8c84a',
+                        bodyColor: '#fff',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: {
+                            afterBody: function(context) {
+                                const blinks = context[0]?.raw || 0;
+                                const fatigue = context[1]?.raw || 0;
+                                if (fatigue > 65 && blinks < 12) return '\n⚠️ Low blinks driving fatigue up. Take a break!';
+                                return null;
+                            }
+                        }
+                    }
                 },
                 scales: {
-                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888' }, beginAtZero: true },
+                    y: { 
+                        type: 'linear', display: true, position: 'left',
+                        grid: { color: 'rgba(255,255,255,0.05)' }, 
+                        ticks: { color: '#888' }, beginAtZero: true 
+                    },
+                    y1: {
+                        type: 'linear', display: true, position: 'right',
+                        grid: { display: false },
+                        ticks: { color: '#ef4444' }, min: 0, max: 100
+                    },
                     x: { grid: { display: false }, ticks: { color: '#888', maxRotation: 0, maxTicksLimit: 6 } }
                 }
             }
         });
+
+        // ── Chart Mode Toggle (Line / Bar / 3D) ──
+        const MODES = ['line', 'bar', '3d'];
+        const MODE_LABELS = { line: 'Bar View', bar: '3D View', '3d': 'Line View' };
+        const modeBtn = document.getElementById('chartModeToggle');
+        const chart3DEl = document.getElementById('blinkChart3D');
+        if (modeBtn) {
+            modeBtn.addEventListener('click', () => {
+                const curIdx = MODES.indexOf(blinkChartMode);
+                blinkChartMode = MODES[(curIdx + 1) % MODES.length];
+                modeBtn.textContent = MODE_LABELS[blinkChartMode];
+                if (blinkChartMode === '3d') {
+                    // ── 3D Mode: Plotly scatter3d ──
+                    elBlink.style.display = 'none';
+                    if (chart3DEl) chart3DEl.style.display = 'block';
+                    const labels3d = blinkChart.data.labels || [];
+                    const bData = blinkChart.data.datasets[0]?.data || [];
+                    const fData = blinkChart.data.datasets.length > 1 ? blinkChart.data.datasets[1]?.data || [] : [];
+                    const xV = labels3d.map((_, i) => i);
+                    const trace = {
+                        x: xV, y: bData, z: fData,
+                        mode: 'markers+lines', type: 'scatter3d',
+                        marker: { size: 4, color: bData, colorscale: [[0,'#ef4444'],[0.5,'#e8c84a'],[1,'#22c55e']], opacity: 0.85 },
+                        line: { color: '#e8c84a', width: 2 },
+                        name: 'Blink vs Fatigue',
+                        hovertemplate: 'Time: %{x}<br>Blink Rate: %{y}/min<br>Fatigue: %{z}%<extra></extra>'
+                    };
+                    const layout3d = {
+                        margin: { l: 0, r: 0, t: 0, b: 0 },
+                        paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                        scene: {
+                            xaxis: { title: 'Time', showgrid: true, gridcolor: 'rgba(0,0,0,0.06)' },
+                            yaxis: { title: 'Blinks/min', showgrid: true, gridcolor: 'rgba(0,0,0,0.06)' },
+                            zaxis: { title: 'Fatigue %', showgrid: true, gridcolor: 'rgba(0,0,0,0.06)', range: [0, 100] },
+                            bgcolor: 'rgba(0,0,0,0)',
+                            camera: { eye: { x: 1.6, y: 1.6, z: 0.8 } }
+                        },
+                        font: { family: 'Inter', size: 10, color: '#888' },
+                    };
+                    if (chart3DEl) Plotly.newPlot(chart3DEl, [trace], layout3d, { responsive: true, displayModeBar: false });
+                } else {
+                    // ── 2D Mode: Chart.js line or bar ──
+                    elBlink.style.display = 'block';
+                    if (chart3DEl) { chart3DEl.style.display = 'none'; if (typeof Plotly !== 'undefined') Plotly.purge(chart3DEl); }
+                    const savedLabels = [...blinkChart.data.labels];
+                    const savedBlink = [...blinkChart.data.datasets[0].data];
+                    const savedFatigue = blinkChart.data.datasets.length > 1 ? [...blinkChart.data.datasets[1].data] : [];
+                    blinkChart.destroy();
+                    const isBar = blinkChartMode === 'bar';
+                    blinkChart = new Chart(ctx, {
+                        type: isBar ? 'bar' : 'line',
+                        data: {
+                            labels: savedLabels,
+                            datasets: [
+                                { label: 'Blink Rate', data: savedBlink, borderColor: '#e8c84a', backgroundColor: isBar ? 'rgba(232,200,74,0.7)' : 'rgba(232,200,74,0.1)', borderWidth: isBar ? 0 : 2, tension: 0.4, yAxisID: 'y', borderRadius: isBar ? 4 : 0 },
+                                { label: 'Fatigue %', data: savedFatigue, borderColor: '#ef4444', backgroundColor: isBar ? 'rgba(239,68,68,0.6)' : 'rgba(239,68,68,0.1)', borderWidth: isBar ? 0 : 2, borderDash: isBar ? [] : [5,5], tension: 0.4, yAxisID: 'y1', borderRadius: isBar ? 4 : 0 }
+                            ]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            interaction: { mode: 'index', intersect: false },
+                            plugins: { legend: { display: false }, tooltip: {
+                                backgroundColor: 'rgba(15,15,15,0.9)', titleColor: '#e8c84a', bodyColor: '#fff', padding: 12,
+                                callbacks: { afterBody: function(c) {
+                                    const b = c[0]?.raw||0, f = c[1]?.raw||0;
+                                    if (f > 65 && b < 12) return '\n⚠️ Low blinks + high fatigue = staring too long!';
+                                    if (b >= 15 && f < 30) return '\n✅ Healthy blink rate, low fatigue.';
+                                    if (b < 10) return '\n👁️ Very low blink rate — dry eye risk.';
+                                    if (f > 50) return '\n🧠 Fatigue building — consider a break.';
+                                    return null;
+                                }}
+                            }},
+                            scales: {
+                                y: { type: 'linear', display: true, position: 'left', grid: { color: 'rgba(0,0,0,0.04)' }, beginAtZero: true },
+                                y1: { type: 'linear', display: true, position: 'right', grid: { display: false }, ticks: { color: '#ef4444' }, min: 0, max: 100 },
+                                x: { grid: { display: false }, ticks: { maxRotation: 0, maxTicksLimit: 6 } }
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        // ── Info Tooltip hover ──
+        const infoBtn = document.getElementById('chartInfoBtn');
+        const infoTip = document.getElementById('chartInfoTooltip');
+        if (infoBtn && infoTip) {
+            infoBtn.addEventListener('mouseenter', () => { infoTip.style.display = 'block'; infoBtn.style.opacity = '1'; });
+            infoBtn.addEventListener('mouseleave', () => { infoTip.style.display = 'none'; infoBtn.style.opacity = '0.5'; });
+        }
     }
 
     // 2. Fatigue Chart (Real-Time)
@@ -398,10 +522,15 @@ async function loadData() {
         const res = await fetch(`/api/data?t=${now}`);
         const data = await res.json();
 
+        // The backend returns latest data first (descending). Reverse it so data[data.length-1] is the newest.
+        if (data) {
+            data.reverse();
+        }
+
         const sumRes = await fetch(`/api/summary?t=${now}`);
         const summary = await sumRes.json();
 
-        // Update profile stats
+        // Update profile stats (Newest is last)
         const blinkRate = data && data.length > 0 ? (data[data.length - 1].blink_rate || 0) : 0;
         const distance  = data && data.length > 0 ? (data[data.length - 1].distance || 0) : 0;
         const fatigue   = data && data.length > 0 ? (data[data.length - 1].fatigue || 0) : 0;
@@ -440,14 +569,26 @@ async function loadData() {
         // System status
         const statusEl = document.getElementById('system-status');
         const dotEl = document.querySelector('.status-dot');
+        const bgStatus = document.getElementById('bg-status');
+
+        let isTrackingActive = false;
         if (data && data.length > 0) {
+            const timeSinceLastRecord = Date.now() - data[data.length - 1].timestamp;
+            if (timeSinceLastRecord < 15000) {
+                isTrackingActive = true;
+            }
+        }
+
+        if (isTrackingActive) {
             if (statusEl) statusEl.textContent = 'Monitoring';
+            if (bgStatus && bgStatus.textContent.includes('offline')) bgStatus.innerHTML = '<span style="color:#22c55e">✨ Monitoring Active</span>';
             if (dotEl) { dotEl.classList.remove('offline'); dotEl.classList.add('online'); }
             
             // Apply Dynamic Body Subconscious Glow
             applyAmbientGlow(fatigue);
         } else {
             if (statusEl) statusEl.textContent = 'Offline';
+            if (bgStatus && !bgStatus.innerHTML.includes('Offline')) bgStatus.textContent = 'Monitoring Offline';
             if (dotEl) { dotEl.classList.remove('online'); dotEl.classList.add('offline'); }
             document.body.style.boxShadow = 'none';
         }
@@ -460,25 +601,84 @@ async function loadData() {
                 return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')}`;
             });
 
-            // Update Blink Chart
-            if (blinkChart) {
+            // Update Dual-Line Chart (Dashboard)
+            if (blinkChart && blinkChart.data.datasets.length === 2) {
+                blinkChart.data.labels = labels;
+                blinkChart.data.datasets[0].data = recent.map(r => r.blink_rate || 0);
+                blinkChart.data.datasets[1].data = recent.map(r => r.fatigue || 0);
+                blinkChart.update('none');
+            } else if (blinkChart) { // fallback for Real-Time page if it still uses the bar chart
                 blinkChart.data.labels = labels;
                 blinkChart.data.datasets[0].data = recent.map(r => r.blink_rate || 0);
                 blinkChart.update('none');
             }
 
-            // Update Fatigue Chart
+            // Update Fatigue Chart (Realtime Page)
             if (fatigueChart) {
                 fatigueChart.data.labels = labels;
                 fatigueChart.data.datasets[0].data = recent.map(r => r.fatigue || 0);
                 fatigueChart.update('none');
             }
 
-            // Update Distance Chart
+            // Update Distance Chart (Realtime Page)
             if (distanceChart) {
                 distanceChart.data.labels = labels;
                 distanceChart.data.datasets[0].data = recent.map(r => r.distance || 50);
                 distanceChart.update('none');
+            }
+
+            // --- INSIGHT & ADVISORY UPDATES ---
+            
+            // 1. Focus Score (0-100)
+            // Healthy blinks (15) keep score near 100. High fatigue drops it.
+            let focusScore = 100 - (fatigue * 0.7);
+            if (blinkRate > 10 && blinkRate < 25) focusScore += 10;
+            else if (blinkRate < 10) focusScore -= 10;
+            if (distance < 40) focusScore -= 15;
+            focusScore = Math.min(Math.max(focusScore, 0), 100).toFixed(0);
+            
+            el('focus-score-val', focusScore + ' <small>/ 100</small>');
+            setBar('focus-bar', focusScore);
+
+            // 2. Active Advisory Panel
+            const advText = document.getElementById('advisory-text');
+            const advBlink = document.getElementById('advisory-blink-hint');
+            const advDist = document.getElementById('advisory-dist-hint');
+            
+            if (advText) {
+                if (distance < 40) {
+                    advText.textContent = "You are sitting too close to the screen. Lean back instantly to avoid myopic strain.";
+                    advText.style.color = "#ef4444";
+                } else if (blinkRate < 10) {
+                    advText.textContent = "Your blink rate is critically low. Force a few deep blinks to replenish tear film.";
+                    advText.style.color = "#e8c84a";
+                } else if (fatigue > 60) {
+                    advText.textContent = "Fatigue is compounding. Follow the 20-20-20 rule right now.";
+                    advText.style.color = "#e8c84a";
+                } else {
+                    advText.textContent = "Metrics look healthy. Maintain your current posture and rhythm.";
+                    advText.style.color = "var(--db-dark)";
+                }
+            }
+            if (advBlink) advBlink.textContent = `Blinks: ${Math.round(blinkRate)}/15 min`;
+            if (advDist) advDist.textContent = `Dist: ${Math.round(distance)}/50+ cm`;
+
+            // 3. Goal Progress & Heatmap Simulation Update
+            const goalPercent = Math.min((summary.screen_time_minutes || 0) / 240 * 100, 100);
+            el('screen-goal-text', Math.round(goalPercent) + '%');
+            const goalBar = document.getElementById('screen-goal-bar');
+            if (goalBar) goalBar.style.width = goalPercent + '%';
+
+            // 4. Strict Mode enforcement!
+            const strictToggle = document.getElementById('strictModeToggle');
+            const strictOverlay = document.getElementById('strictOverlay');
+            if (strictToggle && strictToggle.checked && fatigue > 80) {
+                // If the user hasn't explicitly postponed the strict mode recently
+                if (!window.isStrictModeAlerted && strictOverlay) {
+                    strictOverlay.style.display = 'flex';
+                    window.isStrictModeAlerted = true; 
+                    setTimeout(() => { window.isStrictModeAlerted = false; }, 300000); // Allow next alert in 5 mins
+                }
             }
         }
 
@@ -757,10 +957,104 @@ function initMap() {
 // ============================================================
 // Init on DOM Ready
 // ============================================================
+// Init on DOM Ready
+// ============================================================
+let pomodoroInterval;
+let pomodoroRemaining = 25 * 60;
+
+function setupDashboardEnhancements() {
+    // 1. Pomodoro Timer Setup
+    const pomoBtn = document.getElementById('pomodoroBtn');
+    if (pomoBtn) {
+        pomoBtn.addEventListener('click', () => {
+            if (pomodoroInterval) {
+                clearInterval(pomodoroInterval);
+                pomodoroInterval = null;
+                pomoBtn.innerHTML = "🍅 Focus (25m)";
+                pomoBtn.style.background = "var(--db-dark)";
+                pomodoroRemaining = 25 * 60;
+            } else {
+                pomoBtn.style.background = "#ef4444";
+                pomodoroInterval = setInterval(() => {
+                    pomodoroRemaining--;
+                    if (pomodoroRemaining <= 0) {
+                        clearInterval(pomodoroInterval);
+                        pomodoroInterval = null;
+                        pomoBtn.innerHTML = "🎉 Focus Done! Break time.";
+                        showToast("Pomodoro complete. Take a 5-minute break!");
+                    } else {
+                        const m = Math.floor(pomodoroRemaining / 60).toString().padStart(2, '0');
+                        const s = (pomodoroRemaining % 60).toString().padStart(2, '0');
+                        pomoBtn.innerHTML = `🍅 ${m}:${s}`;
+                    }
+                }, 1000);
+            }
+        });
+    }
+
+    // 2. Micro-Break Trigger
+    const breakBtn = document.getElementById('breakBtn');
+    if (breakBtn) {
+        breakBtn.addEventListener('click', () => {
+            const overlay = document.getElementById('strictOverlay');
+            if (overlay) overlay.style.display = 'flex';
+        });
+    }
+
+    // 3. Strict Mode Postpone Button
+    const postpone = document.getElementById('postponeStrictBtn');
+    if (postpone) {
+        postpone.addEventListener('click', () => {
+            document.getElementById('strictOverlay').style.display = 'none';
+            window.isStrictModeAlerted = true;
+            setTimeout(() => { window.isStrictModeAlerted = false; }, 300000); // 5 min snooze
+        });
+    }
+
+    // 4. Generate Visual Density Heatmap (Simulation from LocalStorage or Random)
+    const heatmapEl = document.getElementById('dashboard-heatmap');
+    if (heatmapEl) {
+        let html = '';
+        for (let i = 0; i < 36; i++) {
+            // Simulated intensity levels based on time of day
+            const isMorning = i < 12;
+            const isAfternoon = i >= 12 && i < 24;
+            const rng = Math.random();
+            let color = '#e2e8f0'; // default empty
+            if (isAfternoon && rng > 0.3) color = '#fef08a'; // strain building
+            if (isAfternoon && rng > 0.8) color = '#fee2e2'; // high strain
+            if (isMorning && rng > 0.5) color = '#22c55e'; // healthy focus
+            
+            html += `<div style="background:${color}; height:24px; border-radius:3px; opacity:0; animation:db-fade-in 0.4s ease forwards; animation-delay:${i*0.02}s;"></div>`;
+        }
+        heatmapEl.innerHTML = html;
+        heatmapEl.style.gridTemplateColumns = "repeat(12, 1fr)";
+    }
+
+    // 5. Proactive AI Push Loop
+    setInterval(() => {
+        const body = document.getElementById('chatBody');
+        const statusEl = document.getElementById('system-status');
+        if (!body || !statusEl || statusEl.textContent !== 'Monitoring') return;
+
+        const pFatigue = document.getElementById('fatigue-stat');
+        if (!pFatigue) return;
+        const currentFatigue = parseInt(pFatigue.textContent);
+
+        // Every ~1 minute, 10% chance to push an alert if fatigue is high but not critical
+        if (currentFatigue > 40 && Math.random() < 0.15) {
+            appendChat('bot', `I noticed your fatigue index has reached ${currentFatigue}%. Prolonged focus limits tear production. Remember the 20-20-20 rule!`);
+        } else if (Math.random() < 0.05) {
+            appendChat('bot', "Did you know? An ideal blink rate is around 15 times per minute. You're currently performing well.");
+        }
+    }, 60000);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initCharts();
     initHistoricalData();
     initMap();
+    setupDashboardEnhancements();
     
     // Load Personalization Options
     const sensSelect = document.getElementById('fatigue-sensitivity');

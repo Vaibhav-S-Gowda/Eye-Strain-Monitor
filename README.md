@@ -1,83 +1,146 @@
-# Neural Nexus: Eye Health AI 
+<div align="center">
 
-Neural Nexus is a premium, AI-powered health monitoring ecosystem designed to combat digital eye strain (Computer Vision Syndrome). It transforms your computer into a sentient wellness companion that monitors posture, blinks, and screen distance in real-time.
+# Neural Nexus
 
----
+### AI-Powered Eye Health & Productivity Guardian
 
-## Premium Features
+*Combat digital eye strain with real-time AI monitoring, intelligent interventions, and predictive health analytics.*
 
-### Neural Nexus AI Assistant
-- **Context-Aware Feedback**: An intelligent GPT-powered assistant that interprets your live telemetry (fatigue, distance, posture) to give witty, personalized wellness advice.
-- **Smart Fallback**: Features a "Local Intelligence" mode that continues to monitor and assist even without an internet connection.
-
-### Precision Biometric Tracking
-- **Neural Distance Calc**: Uses MediaPipe FaceMesh for sub-centimeter screen distance estimation via interpupillary mapping.
-- **Blink Velocity Monitoring**: Tracks Eye Aspect Ratio (EAR) to ensure healthy lubrication and micro-rest intervals.
-- **Postural Correction**: Detects "The Slouch" instantly and provides subtle visual cues to realign your spine.
-
-### State-of-the-Art Aesthetic
-- **Glassmorphism UI**: A high-contrast, premium interface featuring frosted glass cards, neo-glow icons, and shimmering gradients.
-- **Interactive Dashboards**: Real-time telemetry syncing with Chart.js for beautiful historical health analytics.
-- **Micro-Animations**: Dynamic "Neural Bubbles" and morphing shapes provide a fluid, premium UX.
+</div>
 
 ---
 
-## Project Structure
+## Overview
 
-```text
-eye_health_ai/
+Neural Nexus is a full-stack health monitoring application that uses your webcam and AI to actively prevent Computer Vision Syndrome (CVS). Unlike passive dashboards that just display data, Neural Nexus acts as a **real-time health guardian** — detecting unsafe eye conditions, triggering interventions, and forecasting fatigue before it happens.
+
+### Key Capabilities
+
+| Feature | Description |
+|---|---|
+| **Real-Time Guardian** | Unified Eye Risk Score combining fatigue, blink rate, and screen distance into a single actionable metric with live alerts |
+| **Blink Detection** | EAR-based blink tracking with debounce logic for accuracy, alerting when blink rate drops below healthy range |
+| **Distance Monitoring** | Sub-centimeter screen distance estimation using MediaPipe FaceMesh interpupillary mapping |
+| **Fatigue Prediction** | Slope-based fatigue forecasting that recommends breaks before strain occurs |
+| **Productivity Timeline** | City-skyline visualization showing focus intensity, session segmentation, and work pattern analysis |
+| **AI Assistant** | Context-aware GPT-powered wellness advisor with local intelligence fallback |
+| **Automated Interventions** | Break enforcement, posture alerts, and mode-based responses (Silent / Strict) |
+| **Interactive Visualizations** | 2D line, bar, and 3D Plotly charts with smart hover insights |
+
+---
+
+## Architecture
+
+```
+Neural Nexus
 ├── backend/
-│   ├── server.py             # Flask API, Authentication, and AI Orchestration
-│   ├── monitor/
-│   │   └── activity_tracker.py # Computer Vision & MediaPipe Inference Engine
-│   └── database/             # MongoDB Connection Logic
+│   ├── server.py                 # Flask API, auth, AI orchestration, REST endpoints
+│   └── monitor/
+│       └── activity_tracker.py   # MediaPipe inference, activity classification
 ├── frontend/
-│   ├── templates/            # HTML5 Dashboards (Dashboard, Profile, Analytics)
+│   ├── templates/
+│   │   ├── dashboard.html        # Main dashboard with metrics, charts, AI chat
+│   │   ├── real_time.html        # Real-Time Guardian with risk scoring & alerts
+│   │   ├── timeline.html         # Productivity Timeline with city-skyline view
+│   │   ├── camera.html           # Camera diagnostic with face mesh overlay
+│   │   ├── analytics.html        # Historical analytics and trends
+│   │   ├── profile.html          # User profile and preferences
+│   │   └── login.html            # Authentication page
 │   └── static/
-│       ├── style.css         # Global Glassmorphism Design System
-│       └── camera.js         # Real-time WebCam & Telemetry Sync
-├── run.py                    # Unified System Loader (Launches Multi-Threads)
-├── requirements.txt          # Neural Nexus Dependencies
-└── .env                      # Intelligence API Keys (OpenRouter)
+│       ├── style.css             # Design system (cream theme, CSS variables)
+│       ├── dashboard.js          # Chart init, telemetry sync, polling loop
+│       └── camera.js             # MediaPipe FaceMesh, blink/distance/fatigue engine
+├── run.py                        # Application entry point (multi-threaded launcher)
+├── requirements.txt              # Python dependencies
+└── .env                          # API keys (OpenRouter)
 ```
 
 ---
 
-## Quick Start
+## Pages
 
-### 1. Hardware & Environment
-- **Camera**: Standard HD Webcam.
-- **Python**: v3.9 or higher.
-- **Database**: MongoDB v6.0+.
+### Dashboard
+The central hub displaying real-time eye health metrics, focus score, session timer, Eye Strain Index gauge, and the Visual Dynamics chart with line/bar/3D toggle.
 
-### 2. Database Setup
-Install and start **MongoDB Community Server** ([Download here](https://www.mongodb.com/try/download/community)). Ensure it is running on `localhost:27017`.
+### Real-Time Guardian
+An intelligent intervention system featuring:
+- **Eye Risk Score** (0–100) combining fatigue + blink rate + distance
+- **Live alert feed** with contextual explanations
+- **Intervention panel** that appears only when action is needed
+- **Session tracker** monitoring work duration and break compliance
+- **Gamification** with compliance scores and safe streaks
+- **Break enforcement overlay** in Strict mode
 
-### 3. Installation
-Clone the repository and install the Neural Core:
+### Productivity Timeline
+A multi-layer analytical view with:
+- **City-skyline visualization** where bar height reflects focus intensity
+- **Session segmentation** grouping continuous work periods
+- **Canvas overlays** for fatigue and blink rate trend lines
+- **Smart insights** detecting peak productivity, distractions, and anomalies
+
+### Camera Diagnostic
+Full-screen camera view with face mesh overlay, real-time blink counter, distance measurement, head tilt tracking, and background (PiP) mode.
+
+### Analytics
+Historical trend analysis with weekly breakdowns.
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+| Requirement | Version |
+|---|---|
+| Python | 3.9+ |
+| MongoDB | 6.0+ ([Download](https://www.mongodb.com/try/download/community)) |
+| Webcam | Any standard HD webcam |
+
+### Installation
+
 ```bash
+# Clone the repository
+git clone https://github.com/Vaibhav-S-Gowda/Eye-Strain-Monitor.git
+cd Eye-Strain-Monitor
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 4. API Configuration (Optional)
-To enable full AI capabilities, add your OpenRouter API key to the `.env` file:
-```text
+### Configuration
+
+Create a `.env` file in the project root for AI assistant capabilities (optional):
+
+```env
 OPENROUTER_API_KEY=your_key_here
 ```
 
-### 5. Launch the Nexus
-Run the unified startup script:
+> The application works fully without an API key. The AI assistant falls back to local intelligence mode.
+
+### Running
+
 ```bash
+# Ensure MongoDB is running on localhost:27017
 python run.py
 ```
-Visit **`http://127.0.0.1:5000`** in your browser.
+
+Open **http://127.0.0.1:5000** in your browser.
 
 ---
 
-## Technical Architecture
-- **Inference Layer**: MediaPipe FaceMesh + OpenCV.
-- **Logic Tier**: Multi-threaded Flask + Activity Monitoring.
-- **Persistence**: MongoDB Document Store.
-- **Visuals Tier**: Vanilla JS + CSS3 (Variables & Backdrop Filters).
+## Technical Stack
 
-*Created with ❤️ for Eye Health and Neural Excellence.*
+| Layer | Technology |
+|---|---|
+| **Computer Vision** | MediaPipe FaceMesh, OpenCV, TensorFlow Lite |
+| **Backend** | Flask, multi-threaded activity monitoring |
+| **Database** | MongoDB (document store for telemetry & user data) |
+| **Frontend** | Vanilla HTML/CSS/JS, Chart.js, Plotly.js |
+| **AI** | OpenRouter API (GPT) with local fallback |
+| **Design** | Custom design system — warm cream aesthetic, Inter typography |
+
+---
+
+## License
+
+This project is licensed under the Apache License 2.0 — see the [LICENSE](LICENSE) file for details.

@@ -258,6 +258,10 @@ def api_timeline():
     for i, log in enumerate(today_logs):
         ts = log.get("timestamp", 0)
         activity = log.get("activity", "Idle")
+        fatigue = log.get("fatigue", 0)
+        blink_rate = log.get("blink_rate", 0)
+        distance = log.get("distance", 0)
+
         # Duration = gap to next log, capped at 5 min; last segment = 2 min
         if i + 1 < len(today_logs):
             gap_ms = today_logs[i + 1]["timestamp"] - ts
@@ -271,9 +275,13 @@ def api_timeline():
 
         segments.append({
             "activity": activity,
-            "start": round(start_frac * 100, 4),   # percent
-            "width": max(round(width_frac * 100, 4), 0.1),  # at least 0.1%
-            "timestamp": ts
+            "start": round(start_frac * 100, 4),
+            "width": max(round(width_frac * 100, 4), 0.1),
+            "timestamp": ts,
+            "fatigue": fatigue,
+            "blink_rate": round(blink_rate, 1) if isinstance(blink_rate, float) else blink_rate,
+            "distance": distance,
+            "duration_ms": duration_ms
         })
 
     return jsonify(segments)

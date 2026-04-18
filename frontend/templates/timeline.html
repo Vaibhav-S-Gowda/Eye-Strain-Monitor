@@ -3,158 +3,798 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neural Nexus — Timeline</title>
+    <title>Neural Nexus — Productivity Timeline</title>
+    <meta name="description" content="Intelligent productivity timeline with multi-layer visualization, session analysis, and predictive insights.">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+    /* ═══════════════════════════════════════════════════════
+       TIMELINE PAGE — Cream Theme (matches Dashboard)
+       ═══════════════════════════════════════════════════════ */
+
+    .tl-main { padding: 28px 36px; }
+    .tl-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 22px; flex-wrap: wrap; gap: 12px; }
+    .tl-header h1 { font-size: 1.5rem; font-weight: 800; color: var(--dark); letter-spacing: -0.02em; }
+    .tl-header__sub { color: var(--gray); font-size: 0.85rem; margin-top: 2px; }
+
+    /* ── Summary Cards ── */
+    .tl-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+    .tl-sum-card {
+        background: var(--white); border: 1px solid var(--border); border-radius: 16px;
+        padding: 20px; display: flex; flex-direction: column; gap: 4px;
+        box-shadow: var(--shadow-sm); transition: transform 0.2s, box-shadow 0.3s;
+        position: relative; overflow: hidden;
+    }
+    .tl-sum-card::before {
+        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+        border-radius: 16px 16px 0 0;
+    }
+    .tl-sum-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+    .tl-sum-card--accent::before { background: var(--yellow); }
+    .tl-sum-card--green::before { background: #22c55e; }
+    .tl-sum-card--danger::before { background: #ef4444; }
+    .tl-sum-card--cyan::before { background: #00d2ff; }
+    .tl-sum-card__icon { font-size: 1.3rem; margin-bottom: 2px; }
+    .tl-sum-card__label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--gray); }
+    .tl-sum-card__val { font-size: 1.7rem; font-weight: 800; color: var(--dark); line-height: 1.1; }
+    .tl-sum-card__sub { font-size: 0.74rem; color: var(--gray2); margin-top: 2px; }
+
+    /* ── Controls Bar ── */
+    .tl-controls {
+        display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+        background: var(--white); border: 1px solid var(--border);
+        border-radius: 14px; padding: 10px 16px; box-shadow: var(--shadow-sm);
+    }
+    .tl-controls__title { font-size: 0.72rem; font-weight: 700; color: var(--gray); margin-right: 4px; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.04em; }
+    .tl-zoom-btn, .tl-filter-btn {
+        padding: 5px 14px; border-radius: 8px; border: 1px solid var(--border);
+        background: var(--cream2); color: var(--dark); font-size: 0.75rem; font-weight: 600;
+        cursor: pointer; transition: all 0.15s; font-family: 'Inter', sans-serif;
+    }
+    .tl-zoom-btn:hover, .tl-filter-btn:hover { background: var(--yellow-soft); border-color: var(--yellow); }
+    .tl-zoom-btn.active { background: var(--dark); color: #fff; border-color: var(--dark); }
+    .tl-filter-btn.active { background: #fef2f2; color: #dc2626; border-color: #fca5a5; }
+    .tl-controls__sep { width: 1px; height: 22px; background: var(--border); margin: 0 6px; flex-shrink: 0; }
+
+    /* ── Timeline Visualization Container ── */
+    .tl-viz-card {
+        background: var(--white); border: 1px solid var(--border);
+        border-radius: 18px; padding: 24px; box-shadow: var(--shadow-sm);
+        margin-bottom: 18px; position: relative;
+    }
+    .tl-viz-card__title { font-size: 0.95rem; font-weight: 700; color: var(--dark); margin-bottom: 2px; }
+    .tl-viz-card__sub { font-size: 0.78rem; color: var(--gray); margin-bottom: 16px; }
+
+    /* How to Read helper */
+    .tl-how-to-read { font-size: 0.72rem; color: var(--gray); background: var(--cream); padding: 8px 14px; border-radius: 8px; margin-bottom: 12px; line-height: 1.5; }
+    .tl-how-to-read strong { color: var(--dark); }
+
+    /* Time Axis */
+    .tl-time-axis { display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--gray); margin-bottom: 8px; padding: 0 2px; font-weight: 500; }
+
+    /* Track */
+    .tl-track-wrap { position: relative; width: 100%; height: 180px; margin-bottom: 8px; }
+    .tl-track {
+        position: relative; width: 100%; height: 100%;
+        border-radius: 12px; overflow: hidden;
+        background: var(--cream); border: 1px solid var(--border);
+        background-image: repeating-linear-gradient(90deg,
+            rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 1px,
+            transparent 1px, transparent 4.1667%);
+    }
+
+    /* Activity Blocks — City Skyline */
+    .tl-block {
+        position: absolute; bottom: 0;
+        border-radius: 4px 4px 0 0; cursor: pointer;
+        transition: opacity 0.15s, filter 0.15s, box-shadow 0.15s;
+        min-width: 2px;
+    }
+    .tl-block:hover {
+        opacity: 1 !important; filter: brightness(1.1) saturate(1.2);
+        z-index: 10; box-shadow: 0 -4px 12px rgba(0,0,0,0.12);
+    }
+
+    /* Fatigue Overlay Line */
+    .tl-overlay-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+
+    /* Annotation Markers */
+    .tl-marker {
+        position: absolute; top: -10px; z-index: 8;
+        width: 18px; height: 18px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 9px; cursor: pointer; box-shadow: var(--shadow-sm);
+        transition: transform 0.15s; border: 2px solid var(--white);
+    }
+    .tl-marker:hover { transform: scale(1.4); }
+    .tl-marker--break { background: #22c55e; color: #fff; }
+    .tl-marker--anomaly { background: #ef4444; color: #fff; animation: pulse-marker 2s infinite; }
+    .tl-marker--switch { background: #f59e0b; color: #fff; }
+    @keyframes pulse-marker {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
+        50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    }
+
+    /* Predictive Block */
+    .tl-predict-block {
+        position: absolute; bottom: 0; border-radius: 4px 4px 0 0;
+        border: 2px dashed rgba(220, 38, 38, 0.3);
+        background: repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(239,68,68,0.04) 4px, rgba(239,68,68,0.04) 8px);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.6rem; font-weight: 700; color: #dc2626;
+    }
+
+    /* Tooltip */
+    .tl-tooltip {
+        position: fixed; z-index: 1000; pointer-events: none;
+        background: var(--dark); border-radius: 14px; padding: 14px 18px;
+        color: #fff; font-size: 0.78rem; line-height: 1.6;
+        max-width: 260px; box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+        opacity: 0; transition: opacity 0.12s;
+    }
+    .tl-tooltip.visible { opacity: 1; }
+    .tl-tooltip__title { font-weight: 700; font-size: 0.88rem; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+    .tl-tooltip__dot { width: 8px; height: 8px; border-radius: 50%; }
+    .tl-tooltip__row { display: flex; justify-content: space-between; gap: 16px; }
+    .tl-tooltip__label { color: rgba(255,255,255,0.5); }
+    .tl-tooltip__val { font-weight: 600; color: #fff; }
+    .tl-tooltip__divider { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 5px 0; }
+    .tl-tooltip__insight { color: var(--yellow); font-weight: 600; font-size: 0.72rem; margin-top: 4px; }
+
+    /* Legend */
+    .tl-legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.76rem; color: var(--gray); margin-top: 14px; align-items: center; }
+    .tl-legend__item { display: flex; align-items: center; gap: 6px; }
+    .tl-legend__swatch { width: 12px; height: 12px; border-radius: 3px; }
+    .tl-legend__line { width: 20px; height: 2px; border-radius: 1px; }
+
+    /* ── Sessions Panel ── */
+    .tl-section-title {
+        font-size: 0.82rem; font-weight: 700; color: var(--gray);
+        margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em;
+        display: flex; align-items: center; gap: 10px;
+    }
+    .tl-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .tl-sessions { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .tl-session-card {
+        background: var(--white); border: 1px solid var(--border);
+        border-radius: 14px; padding: 16px 18px; box-shadow: var(--shadow-sm);
+        transition: transform 0.2s, box-shadow 0.3s; cursor: default;
+    }
+    .tl-session-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .tl-session-card__head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .tl-session-card__num { font-size: 0.65rem; font-weight: 700; color: var(--gray); text-transform: uppercase; letter-spacing: 0.04em; }
+    .tl-session-card__time { font-size: 0.72rem; color: var(--gray2); font-weight: 500; }
+    .tl-session-card__activity { font-size: 0.95rem; font-weight: 700; color: var(--dark); display: flex; align-items: center; gap: 8px; }
+    .tl-session-card__activity-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .tl-session-card__row { display: flex; gap: 18px; margin-top: 10px; font-size: 0.78rem; }
+    .tl-session-card__metric { display: flex; flex-direction: column; }
+    .tl-session-card__metric-label { color: var(--gray); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 1px; }
+    .tl-session-card__metric-val { font-weight: 700; color: var(--dark); }
+
+    /* ── Insights / Warnings Panel ── */
+    .tl-insights { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+    .tl-insight-card {
+        background: var(--white); border: 1px solid var(--border);
+        border-radius: 16px; padding: 20px; box-shadow: var(--shadow-sm);
+    }
+    .tl-insight-card h3 { font-size: 0.88rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; color: var(--dark); }
+    .tl-insight-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+    .tl-insight-list li {
+        font-size: 0.8rem; color: var(--dark); padding: 10px 14px; border-radius: 10px;
+        background: var(--cream); border: 1px solid var(--border); line-height: 1.5;
+    }
+    .tl-insight-list li strong { color: #b8960a; }
+
+    /* ── Responsive ── */
+    @media (max-width: 1100px) { .tl-summary { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 900px) { .tl-insights { grid-template-columns: 1fr; } .tl-main { padding: 20px 16px; } }
+    @media (max-width: 600px) { .tl-summary { grid-template-columns: 1fr; } .tl-sessions { grid-template-columns: 1fr; } }
+    </style>
 </head>
 
-<body>
+<body class="tl-body">
 <div id="toast-container"></div>
+
+<!-- Tooltip (shared, positioned via JS) -->
+<div class="tl-tooltip" id="tlTooltip">
+    <div class="tl-tooltip__title"><span class="tl-tooltip__dot" id="ttDot"></span><span id="ttActivity">—</span></div>
+    <div class="tl-tooltip__row"><span class="tl-tooltip__label">Time</span><span class="tl-tooltip__val" id="ttTime">—</span></div>
+    <hr class="tl-tooltip__divider">
+    <div class="tl-tooltip__row"><span class="tl-tooltip__label">Focus Score</span><span class="tl-tooltip__val" id="ttFocus">—</span></div>
+    <div class="tl-tooltip__row"><span class="tl-tooltip__label">Fatigue</span><span class="tl-tooltip__val" id="ttFatigue">—</span></div>
+    <div class="tl-tooltip__row"><span class="tl-tooltip__label">Blink Rate</span><span class="tl-tooltip__val" id="ttBlink">—</span></div>
+    <div class="tl-tooltip__row"><span class="tl-tooltip__label">Distance</span><span class="tl-tooltip__val" id="ttDist">—</span></div>
+    <div class="tl-tooltip__insight" id="ttInsight"></div>
+</div>
 
 <div class="app-layout">
     <!-- Sidebar -->
-    <aside class="sidebar">
-        <div class="sidebar-logo">
-            <div class="logo-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="logo-svg"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+    <aside class="db-sidebar">
+        <div class="db-sidebar__logo">
+            <div class="db-sidebar__logo-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
             </div>
-            <span class="logo-text">Neural Nexus</span>
+            <span class="db-sidebar__logo-text">Neural Nexus</span>
         </div>
-        <nav class="sidebar-nav">
-            <a href="/" class="sidebar-link" title="Dashboard">
-                <span class="s-icon">📊</span>
-                <span class="s-label">Dashboard</span>
+
+        <nav class="db-sidebar__nav">
+            <a href="/" class="db-sidebar__link" id="nav-dashboard">
+                <span class="db-sidebar__icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+                <span class="db-sidebar__label">Dashboard</span>
             </a>
-            <a href="/real-time" class="sidebar-link" title="Real-Time">
-                <span class="s-icon">👁️</span>
-                <span class="s-label">Real-Time</span>
+            <a href="/real-time" class="db-sidebar__link" id="nav-realtime">
+                <span class="db-sidebar__icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg></span>
+                <span class="db-sidebar__label">Real-Time</span>
             </a>
-            <a href="/camera" class="sidebar-link" title="Camera">
-                <span class="s-icon">📷</span>
-                <span class="s-label">Camera</span>
+            <a href="/camera" class="db-sidebar__link" id="nav-camera">
+                <span class="db-sidebar__icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></span>
+                <span class="db-sidebar__label">Camera</span>
             </a>
-            <a href="/analytics" class="sidebar-link" title="Analytics">
-                <span class="s-icon">📈</span>
-                <span class="s-label">Analytics</span>
+            <a href="/analytics" class="db-sidebar__link" id="nav-analytics">
+                <span class="db-sidebar__icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+                <span class="db-sidebar__label">Analytics</span>
             </a>
-            <a href="/timeline" class="sidebar-link active" title="Timeline">
-                <span class="s-icon">⏳</span>
-                <span class="s-label">Timeline</span>
+            <a href="/timeline" class="db-sidebar__link db-sidebar__link--active" id="nav-timeline">
+                <span class="db-sidebar__icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+                <span class="db-sidebar__label">Timeline</span>
             </a>
         </nav>
-        <div class="sidebar-bottom">
-            <a href="/profile" class="sidebar-link" title="Profile">
-                <div class="sidebar-avatar" id="sidebar-avatar-container">
-                    <i class="fas fa-user-circle"></i>
+
+        <div class="db-sidebar__bottom">
+            <a href="/profile" class="db-sidebar__link db-sidebar__link--profile">
+                <div class="db-sidebar__avatar" id="sidebar-avatar-container">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 </div>
-                <span class="s-label" id="sidebar-user-name">User</span>
+                <span class="db-sidebar__label db-sidebar__label--name" id="sidebar-user-name">User</span>
             </a>
-            <a href="/logout" class="sidebar-link logout" title="Logout">
-                <span class="s-icon">🚪</span>
-                <span class="s-label">Logout</span>
+            <a href="/logout" class="db-sidebar__link db-sidebar__link--logout">
+                <span class="db-sidebar__icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>
+                <span class="db-sidebar__label">Logout</span>
             </a>
         </div>
     </aside>
 
-    <main class="main-content">
-        <header class="top-header">
-            <div class="header-greeting">
-                <h1>Productivity Timeline</h1>
-                <p class="sub-greeting">Your daily activity and focus telemetry</p>
-            </div>
-            <div class="header-nav">
-                <a href="/" class="pill">Dashboard</a>
-                <a href="/real-time" class="pill">Real-Time</a>
-                <a href="/camera" class="pill">Camera</a>
-                <a href="/analytics" class="pill">Analytics</a>
-            </div>
-        </header>
+    <main class="main-content tl-main">
 
-        <div class="content-grid" style="grid-template-columns: 1fr;">
-            <div class="chart-card">
-                <div class="chart-card-header">
-                    <h3>Your Activity Flow</h3>
-                </div>
-                <div class="timeline-x-axis" style="margin-bottom: 30px;">
-                    <span>12:00 AM</span><span>06:00 AM</span><span>12:00 PM</span><span>06:00 PM</span><span>12:00 AM</span>
-                </div>
-                <div id="timeline-container" class="timeline-container" style="height: 100px;"></div>
-                <div class="timeline-legend" style="margin-top: 30px; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; font-size: 0.85rem; color: var(--gray);">
-                    <span style="display: flex; align-items:center; gap: 6px;"><div style="width:14px; height:14px; border-radius:4px; background:#00d2ff;"></div>Coding</span>
-                    <span style="display: flex; align-items:center; gap: 6px;"><div style="width:14px; height:14px; border-radius:4px; background:#ff4b2b;"></div>Reading</span>
-                    <span style="display: flex; align-items:center; gap: 6px;"><div style="width:14px; height:14px; border-radius:4px; background:#f1c40f;"></div>Browsing</span>
-                    <span style="display: flex; align-items:center; gap: 6px;"><div style="width:14px; height:14px; border-radius:4px; background:#00b09b;"></div>Watching</span>
-                    <span style="display: flex; align-items:center; gap: 6px;"><div style="width:14px; height:14px; border-radius:4px; background:#9b59b6;"></div>Gaming</span>
-                    <span style="display: flex; align-items:center; gap: 6px;"><div style="width:14px; height:14px; border-radius:4px; background:#7f8c8d;"></div>Idle</span>
-                </div>
+        <!-- Header -->
+        <div class="tl-header">
+            <div>
+                <h1>Productivity Timeline</h1>
+                <p>See how you spent your day, your focus patterns, and where to improve</p>
             </div>
         </div>
+
+        <!-- ── Summary Metrics ── -->
+        <div class="tl-summary" id="tlSummary">
+            <div class="tl-sum-card tl-sum-card--accent">
+                <span class="tl-sum-card__icon">🎯</span>
+                <span class="tl-sum-card__label">Deep Work</span>
+                <span class="tl-sum-card__val" id="sumDeepWork">—</span>
+                <span class="tl-sum-card__sub">Time spent coding & reading</span>
+            </div>
+            <div class="tl-sum-card tl-sum-card--green">
+                <span class="tl-sum-card__icon">🔥</span>
+                <span class="tl-sum-card__label">Longest Streak</span>
+                <span class="tl-sum-card__val" id="sumStreak">—</span>
+                <span class="tl-sum-card__sub">Your longest unbroken work session</span>
+            </div>
+            <div class="tl-sum-card tl-sum-card--danger">
+                <span class="tl-sum-card__icon">⚡</span>
+                <span class="tl-sum-card__label">Distractions</span>
+                <span class="tl-sum-card__val" id="sumDistractions">—</span>
+                <span class="tl-sum-card__sub">Times you switched tasks quickly</span>
+            </div>
+            <div class="tl-sum-card tl-sum-card--cyan">
+                <span class="tl-sum-card__icon">🏆</span>
+                <span class="tl-sum-card__label">Peak Productivity</span>
+                <span class="tl-sum-card__val" id="sumPeak">—</span>
+                <span class="tl-sum-card__sub">When you were most focused today</span>
+            </div>
+        </div>
+
+        <!-- ── Controls ── -->
+        <div class="tl-controls">
+            <span class="tl-controls__title">Zoom</span>
+            <button class="tl-zoom-btn active" data-zoom="24">24h</button>
+            <button class="tl-zoom-btn" data-zoom="12">12h</button>
+            <button class="tl-zoom-btn" data-zoom="6">6h</button>
+            <button class="tl-zoom-btn" data-zoom="1">1h</button>
+            <div class="tl-controls__sep"></div>
+            <span class="tl-controls__title">Filter</span>
+            <button class="tl-filter-btn" data-filter="Idle">Hide Idle</button>
+            <button class="tl-filter-btn" data-filter="Browsing">Hide Browsing</button>
+            <button class="tl-filter-btn" data-filter="Gaming">Hide Gaming</button>
+        </div>
+
+        <!-- ── Multi-Layer Visualization ── -->
+        <div class="tl-viz-card">
+            <div class="tl-viz-card__title">Your Activity Timeline</div>
+            <div class="tl-viz-card__sub">Each colored block is an activity. Taller blocks = higher focus. Hover any block for details.</div>
+            <div class="tl-how-to-read">
+                💡 <strong>How to read:</strong> Colors show what you were doing · <strong>Bar height</strong> shows how focused you were · The <strong style="color:#ef4444;">red line</strong> tracks fatigue · <strong style="color:#22c55e;">Green dots</strong> = breaks · <strong style="color:#ef4444;">Red dots</strong> = high fatigue zones
+            </div>
+            <div class="tl-time-axis" id="tlTimeAxis"></div>
+            <div class="tl-track-wrap" id="tlTrackWrap">
+                <div class="tl-track" id="tlTrack"></div>
+                <canvas class="tl-overlay-canvas" id="tlOverlay"></canvas>
+            </div>
+            <div class="tl-legend">
+                <span class="tl-legend__item"><span class="tl-legend__swatch" style="background:#00d2ff;"></span>Coding</span>
+                <span class="tl-legend__item"><span class="tl-legend__swatch" style="background:#ff4b2b;"></span>Reading</span>
+                <span class="tl-legend__item"><span class="tl-legend__swatch" style="background:#f1c40f;"></span>Browsing</span>
+                <span class="tl-legend__item"><span class="tl-legend__swatch" style="background:#00b09b;"></span>Watching</span>
+                <span class="tl-legend__item"><span class="tl-legend__swatch" style="background:#9b59b6;"></span>Gaming</span>
+                <span class="tl-legend__item"><span class="tl-legend__swatch" style="background:#7f8c8d;"></span>Idle</span>
+                <span style="margin-left: 16px;" class="tl-legend__item"><span class="tl-legend__line" style="background:#ef4444;"></span>Fatigue</span>
+                <span class="tl-legend__item"><span class="tl-legend__line" style="background:#00d2ff; border-top:2px dashed #00d2ff; height:0;"></span>Blink Rate</span>
+            </div>
+        </div>
+
+        <!-- ── Sessions ── -->
+        <div class="tl-section-title">Session Breakdown</div>
+        <div class="tl-sessions" id="tlSessions">
+            <div class="tl-session-card" style="color:var(--gray); font-size:0.85rem;">Loading sessions...</div>
+        </div>
+
+        <!-- ── Insights & Predictive ── -->
+        <div class="tl-insights" id="tlInsights">
+            <div class="tl-insight-card" id="tlInsightsCard">
+                <h3>⚡ Smart Insights</h3>
+                <ul class="tl-insight-list" id="tlInsightList">
+                    <li>Analyzing your productivity patterns...</li>
+                </ul>
+            </div>
+            <div class="tl-insight-card" id="tlPredictiveCard">
+                <h3>🔮 Predictive Assistance</h3>
+                <ul class="tl-insight-list" id="tlPredictList">
+                    <li>Building predictions from your data trends...</li>
+                </ul>
+            </div>
+        </div>
+
     </main>
 </div>
 
 <script src="/static/dashboard.js"></script>
 <script>
-// ── Timeline Renderer ──────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// PRODUCTIVITY TIMELINE ENGINE — Neural Nexus
+// ═══════════════════════════════════════════════════════════════
+
 const ACTIVITY_COLORS = {
-    "Coding":        "#00d2ff",
-    "Reading":       "#ff4b2b",
-    "Browsing":      "#f1c40f",
-    "Watching":      "#00b09b",
-    "Gaming":        "#9b59b6",
-    "Watching Video":"#00b09b",
-    "Idle":          "#7f8c8d"
+    "Coding":         "#00d2ff",
+    "Reading":        "#ff4b2b",
+    "Browsing":       "#f1c40f",
+    "Watching":       "#00b09b",
+    "Watching Video": "#00b09b",
+    "Gaming":         "#9b59b6",
+    "Idle":           "#7f8c8d",
+    "Monitoring":     "#00d2ff"
 };
 
-async function renderTimeline() {
-    const container = document.getElementById('timeline-container');
-    if (!container) return;
+const PRODUCTIVE_ACTIVITIES = ["Coding", "Reading", "Monitoring"];
+
+let rawSegments = [];
+let currentZoom = 24;  // hours
+let hiddenActivities = new Set();
+
+// ── Utility ──
+function msToMinStr(ms) {
+    const m = Math.round(ms / 60000);
+    if (m < 60) return `${m}m`;
+    return `${Math.floor(m / 60)}h ${m % 60}m`;
+}
+function msToHM(ts) {
+    const d = new Date(ts);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+function calcFocusScore(seg) {
+    // 0-100.  High blink+low fatigue+productive activity = high score
+    let score = 100 - (seg.fatigue || 0) * 0.7;
+    const br = seg.blink_rate || 0;
+    if (br > 10 && br < 25) score += 10;
+    else if (br < 10) score -= 15;
+    if (!PRODUCTIVE_ACTIVITIES.includes(seg.activity)) score -= 20;
+    return Math.min(100, Math.max(0, Math.round(score)));
+}
+
+// ═══ SESSION GROUPING ═══
+function groupSessions(segments) {
+    if (!segments.length) return [];
+    const sessions = [];
+    let cur = { activity: segments[0].activity, segs: [segments[0]], start: segments[0].timestamp };
+    for (let i = 1; i < segments.length; i++) {
+        const s = segments[i];
+        const gap = s.timestamp - (cur.segs[cur.segs.length - 1].timestamp + (cur.segs[cur.segs.length - 1].duration_ms || 0));
+        if (s.activity === cur.activity && gap < 120000) {
+            cur.segs.push(s);
+        } else {
+            sessions.push(cur);
+            cur = { activity: s.activity, segs: [s], start: s.timestamp };
+        }
+    }
+    sessions.push(cur);
+    // Enrich
+    sessions.forEach(ses => {
+        ses.duration = ses.segs.reduce((t, s) => t + (s.duration_ms || 0), 0);
+        ses.avgFatigue = ses.segs.reduce((t, s) => t + (s.fatigue || 0), 0) / ses.segs.length;
+        ses.avgBlink = ses.segs.reduce((t, s) => t + (s.blink_rate || 0), 0) / ses.segs.length;
+        ses.focusScore = Math.round(ses.segs.reduce((t, s) => t + calcFocusScore(s), 0) / ses.segs.length);
+        ses.end = ses.start + ses.duration;
+    });
+    return sessions;
+}
+
+// ═══ INSIGHT GENERATION ═══
+function generateInsights(sessions, segments) {
+    const insights = [];
+    const predictions = [];
+
+    // 1. Distraction Detection (rapid switch within 3 min)
+    let distractionCount = 0;
+    for (let i = 1; i < sessions.length; i++) {
+        if (sessions[i].start - sessions[i-1].end < 180000 && sessions[i].activity !== sessions[i-1].activity) {
+            if (sessions[i].duration < 120000) distractionCount++;
+        }
+    }
+    if (distractionCount > 3) insights.push(`⚠️ <strong>${distractionCount} rapid context switches</strong> detected. Frequent task-switching reduces deep work effectiveness by up to 40%.`);
+
+    // 2. Peak Productivity Window
+    if (segments.length > 10) {
+        let bestScore = 0, bestIdx = 0;
+        for (let i = 0; i < segments.length - 5; i++) {
+            const windowScore = segments.slice(i, i + 5).reduce((t, s) => t + calcFocusScore(s), 0) / 5;
+            if (windowScore > bestScore) { bestScore = windowScore; bestIdx = i; }
+        }
+        insights.push(`🏆 Your <strong>peak focus</strong> was around <strong>${msToHM(segments[bestIdx].timestamp)}</strong> (avg score: ${Math.round(bestScore)}). Try to schedule critical work at this time daily.`);
+    }
+
+    // 3. Long idle detection
+    const idleSessions = sessions.filter(s => s.activity === 'Idle' && s.duration > 600000);
+    if (idleSessions.length) insights.push(`💤 <strong>${idleSessions.length} idle period${idleSessions.length > 1 ? 's' : ''}</strong> over 10 minutes detected. These could be optimized break windows.`);
+
+    // 4. Eye strain warning
+    const highFatigue = segments.filter(s => s.fatigue > 70);
+    if (highFatigue.length > 5) insights.push(`🔴 Fatigue exceeded <strong>70%</strong> in ${highFatigue.length} data points. Extended high-fatigue work accelerates eye strain and reduces cognitive performance.`);
+
+    // 5. Blink rate anomalies
+    const lowBlink = segments.filter(s => s.blink_rate > 0 && s.blink_rate < 8);
+    if (lowBlink.length > 3) insights.push(`👁️ Blink rate dropped below healthy threshold (<strong>&lt;8/min</strong>) ${lowBlink.length} times. Dry eye risk is elevated.`);
+
+    if (!insights.length) insights.push('✅ No significant inefficiencies detected today. Keep up the good work!');
+
+    // === PREDICTIONS ===
+    // Fatigue trajectory
+    if (segments.length > 6) {
+        const last6 = segments.slice(-6);
+        const fatigueSlope = (last6[5].fatigue - last6[0].fatigue) / 6;
+        if (fatigueSlope > 2) {
+            const remaining = Math.max(0, 85 - last6[5].fatigue);
+            const minutesToThreshold = remaining / fatigueSlope * 1; // rough 1-min sample intervals
+            predictions.push(`📈 Fatigue is <strong>climbing at ${fatigueSlope.toFixed(1)}%/sample</strong>. At this rate you'll hit 85% in ~<strong>${Math.round(minutesToThreshold)} minutes</strong>. Consider a break soon.`);
+        } else if (fatigueSlope < -1) {
+            predictions.push(`📉 Fatigue is <strong>decreasing</strong>. Your recent break or posture change is having a positive effect.`);
+        } else {
+            predictions.push(`➡️ Fatigue trend is <strong>stable</strong>. Current work rhythm is sustainable.`);
+        }
+    }
+
+    // Suggest break timing
+    const totalWorkMs = sessions.filter(s => PRODUCTIVE_ACTIVITIES.includes(s.activity)).reduce((t, s) => t + s.duration, 0);
+    if (totalWorkMs > 90 * 60000) {
+        const lastBreak = sessions.findLast(s => s.activity === 'Idle' && s.duration > 120000);
+        if (lastBreak) {
+            const sinceBreak = Date.now() - lastBreak.end;
+            if (sinceBreak > 45 * 60000) predictions.push(`⏰ It's been <strong>${Math.round(sinceBreak / 60000)}+ minutes</strong> since your last real break. The 52-17 rule suggests a break now for peak recovery.`);
+        } else {
+            predictions.push(`⏰ No meaningful breaks detected in <strong>${msToMinStr(totalWorkMs)}</strong> of work. Schedule a 5-10 minute break to reset focus.`);
+        }
+    }
+
+    if (predictions.length === 0) predictions.push('🔮 Accumulating more data points for accurate trend predictions...');
+
+    return { insights, predictions, distractionCount };
+}
+
+// ═══ RENDER SUMMARY ═══
+function renderSummary(sessions, segments, distractionCount) {
+    // Deep Work
+    const deepMs = sessions.filter(s => PRODUCTIVE_ACTIVITIES.includes(s.activity)).reduce((t, s) => t + s.duration, 0);
+    document.getElementById('sumDeepWork').textContent = msToMinStr(deepMs);
+
+    // Longest Streak
+    let longestStreak = 0;
+    let currentStreak = 0;
+    for (const ses of sessions) {
+        if (PRODUCTIVE_ACTIVITIES.includes(ses.activity)) {
+            currentStreak += ses.duration;
+            if (currentStreak > longestStreak) longestStreak = currentStreak;
+        } else { currentStreak = 0; }
+    }
+    document.getElementById('sumStreak').textContent = msToMinStr(longestStreak);
+
+    // Distractions
+    document.getElementById('sumDistractions').textContent = distractionCount;
+
+    // Peak Window
+    if (segments.length > 5) {
+        let bestScore = 0, bestIdx = 0;
+        for (let i = 0; i < segments.length - 5; i++) {
+            const ws = segments.slice(i, i + 5).reduce((t, s) => t + calcFocusScore(s), 0) / 5;
+            if (ws > bestScore) { bestScore = ws; bestIdx = i; }
+        }
+        document.getElementById('sumPeak').textContent = msToHM(segments[bestIdx].timestamp);
+    }
+}
+
+// ═══ RENDER SESSIONS ═══
+function renderSessions(sessions) {
+    const container = document.getElementById('tlSessions');
+    if (!sessions.length) { container.innerHTML = '<div style="color:var(--gray);font-size:0.85rem;">No sessions detected yet.</div>'; return; }
+    container.innerHTML = sessions.map((ses, i) => {
+        const color = ACTIVITY_COLORS[ses.activity] || '#7f8c8d';
+        return `
+        <div class="tl-session-card">
+            <div class="tl-session-card__head">
+                <span class="tl-session-card__num">Session ${i + 1}</span>
+                <span class="tl-session-card__time">${msToHM(ses.start)} — ${msToHM(ses.end)}</span>
+            </div>
+            <div class="tl-session-card__activity">
+                <span class="tl-session-card__activity-dot" style="background:${color};"></span>
+                ${ses.activity}
+            </div>
+            <div class="tl-session-card__row">
+                <div class="tl-session-card__metric"><span class="tl-session-card__metric-label">Duration</span><span class="tl-session-card__metric-val">${msToMinStr(ses.duration)}</span></div>
+                <div class="tl-session-card__metric"><span class="tl-session-card__metric-label">Focus</span><span class="tl-session-card__metric-val">${ses.focusScore}/100</span></div>
+                <div class="tl-session-card__metric"><span class="tl-session-card__metric-label">Avg Fatigue</span><span class="tl-session-card__metric-val">${Math.round(ses.avgFatigue)}%</span></div>
+                <div class="tl-session-card__metric"><span class="tl-session-card__metric-label">Avg Blink</span><span class="tl-session-card__metric-val">${ses.avgBlink.toFixed(1)}/m</span></div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ═══ RENDER TIMELINE TRACK (City Skyline) ═══
+function renderTrack(segments) {
+    const track = document.getElementById('tlTrack');
+    const wrap = document.getElementById('tlTrackWrap');
+    track.innerHTML = '';
+
+    const now = new Date();
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const zoomMs = currentZoom * 3600000;
+    // Determine the visible window
+    let windowStart, windowEnd;
+    if (currentZoom === 24) {
+        windowStart = midnight;
+        windowEnd = midnight + 86400000;
+    } else {
+        // Center the visible window on the latest data
+        const latest = segments.length > 0 ? segments[segments.length - 1].timestamp : Date.now();
+        windowEnd = latest + 300000;
+        windowStart = windowEnd - zoomMs;
+    }
+    const windowDur = windowEnd - windowStart;
+
+    // Generate time axis labels
+    const axisEl = document.getElementById('tlTimeAxis');
+    const numLabels = currentZoom <= 1 ? 7 : (currentZoom <= 6 ? 7 : 5);
+    let axisHTML = '';
+    for (let i = 0; i < numLabels; i++) {
+        const ts = windowStart + (windowDur / (numLabels - 1)) * i;
+        const d = new Date(ts);
+        const label = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        axisHTML += `<span>${label}</span>`;
+    }
+    axisEl.innerHTML = axisHTML;
+
+    const maxHeight = wrap.clientHeight || 180;
+
+    segments.forEach(seg => {
+        const segEnd = seg.timestamp + (seg.duration_ms || 0);
+        if (segEnd < windowStart || seg.timestamp > windowEnd) return;
+        if (hiddenActivities.has(seg.activity)) return;
+
+        const leftPct = Math.max(0, ((seg.timestamp - windowStart) / windowDur) * 100);
+        const widthPct = Math.max(0.15, (((seg.duration_ms || 0)) / windowDur) * 100);
+        const focus = calcFocusScore(seg);
+        const heightPct = 20 + (focus / 100) * 75; // 20%-95% range = city skyline effect
+        const color = ACTIVITY_COLORS[seg.activity] || '#7f8c8d';
+
+        const block = document.createElement('div');
+        block.className = 'tl-block';
+        block.dataset.seg = JSON.stringify(seg);
+        block.style.cssText = `
+            left: ${leftPct}%;
+            width: ${widthPct}%;
+            height: ${heightPct}%;
+            background: linear-gradient(180deg, ${color}, ${color}cc);
+            opacity: 0.85;
+        `;
+        block.addEventListener('mouseenter', onBlockHover);
+        block.addEventListener('mousemove', onBlockMove);
+        block.addEventListener('mouseleave', onBlockLeave);
+        track.appendChild(block);
+    });
+
+    // Annotation markers
+    const sessions = groupSessions(segments);
+    sessions.forEach(ses => {
+        // Break markers (Idle sessions > 2min)
+        if (ses.activity === 'Idle' && ses.duration > 120000) {
+            addMarker(ses.start, windowStart, windowDur, 'break', '☕');
+        }
+        // Anomaly markers (high fatigue)
+        if (ses.avgFatigue > 70) {
+            addMarker(ses.start, windowStart, windowDur, 'anomaly', '⚠');
+        }
+    });
+
+    // Distraction markers
+    for (let i = 1; i < sessions.length; i++) {
+        if (sessions[i].start - sessions[i-1].end < 180000 && sessions[i].activity !== sessions[i-1].activity && sessions[i].duration < 120000) {
+            addMarker(sessions[i].start, windowStart, windowDur, 'switch', '↔');
+        }
+    }
+
+    // Predictive block at the end
+    if (segments.length > 3) {
+        const last = segments[segments.length - 1];
+        const lastEnd = last.timestamp + (last.duration_ms || 0);
+        if (lastEnd > windowStart && lastEnd < windowEnd) {
+            const predLeft = ((lastEnd - windowStart) / windowDur) * 100;
+            const predWidth = Math.min(3, 100 - predLeft);
+            if (predWidth > 0.2) {
+                const predBlock = document.createElement('div');
+                predBlock.className = 'tl-predict-block';
+                predBlock.style.cssText = `left:${predLeft}%; width:${predWidth}%; height:45%;`;
+                predBlock.innerHTML = '?';
+                predBlock.title = 'Predicted fatigue zone — break recommended';
+                track.appendChild(predBlock);
+            }
+        }
+    }
+
+    // Draw fatigue overlay line
+    drawOverlay(segments, windowStart, windowDur);
+}
+
+function addMarker(ts, winStart, winDur, type, emoji) {
+    const track = document.getElementById('tlTrack');
+    const leftPct = ((ts - winStart) / winDur) * 100;
+    if (leftPct < 0 || leftPct > 100) return;
+    const marker = document.createElement('div');
+    marker.className = `tl-marker tl-marker--${type}`;
+    marker.style.left = `${leftPct}%`;
+    marker.textContent = emoji;
+    const labels = { break: 'Break detected', anomaly: 'High fatigue zone', switch: 'Rapid context switch' };
+    marker.title = labels[type] || '';
+    track.appendChild(marker);
+}
+
+// ═══ FATIGUE OVERLAY (Canvas) ═══
+function drawOverlay(segments, windowStart, windowDur) {
+    const canvas = document.getElementById('tlOverlay');
+    const wrap = document.getElementById('tlTrackWrap');
+    canvas.width = wrap.clientWidth;
+    canvas.height = wrap.clientHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (segments.length < 2) return;
+
+    // Fatigue line (red)
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.7)';
+    ctx.lineWidth = 2;
+    let first = true;
+    segments.forEach(seg => {
+        const x = ((seg.timestamp - windowStart) / windowDur) * canvas.width;
+        const y = canvas.height - (seg.fatigue / 100) * canvas.height;
+        if (x < 0 || x > canvas.width) return;
+        if (first) { ctx.moveTo(x, y); first = false; }
+        else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Blink rate line (cyan dashed)
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(0, 210, 255, 0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    first = true;
+    segments.forEach(seg => {
+        const x = ((seg.timestamp - windowStart) / windowDur) * canvas.width;
+        const y = canvas.height - (Math.min(seg.blink_rate || 0, 30) / 30) * canvas.height;
+        if (x < 0 || x > canvas.width) return;
+        if (first) { ctx.moveTo(x, y); first = false; }
+        else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+}
+
+// ═══ TOOLTIP ═══
+const tooltip = document.getElementById('tlTooltip');
+function onBlockHover(e) {
+    const seg = JSON.parse(e.target.dataset.seg);
+    const focus = calcFocusScore(seg);
+    const color = ACTIVITY_COLORS[seg.activity] || '#7f8c8d';
+    document.getElementById('ttDot').style.background = color;
+    document.getElementById('ttActivity').textContent = seg.activity;
+    document.getElementById('ttTime').textContent = msToHM(seg.timestamp);
+    document.getElementById('ttFocus').textContent = focus + '/100';
+    document.getElementById('ttFatigue').textContent = Math.round(seg.fatigue) + '%';
+    document.getElementById('ttBlink').textContent = (seg.blink_rate || 0) + '/min';
+    document.getElementById('ttDist').textContent = Math.round(seg.distance || 0) + ' cm';
+    // Contextual insight
+    let insight = '';
+    if (seg.fatigue > 70) insight = '⚠️ High fatigue — break needed';
+    else if (seg.blink_rate > 0 && seg.blink_rate < 10) insight = '👁️ Low blinks — dry eye risk';
+    else if (focus > 80) insight = '🟢 Excellent focus state';
+    document.getElementById('ttInsight').innerHTML = insight;
+    tooltip.classList.add('visible');
+}
+function onBlockMove(e) {
+    tooltip.style.left = (e.clientX + 16) + 'px';
+    tooltip.style.top = (e.clientY - 10) + 'px';
+}
+function onBlockLeave() { tooltip.classList.remove('visible'); }
+
+// ═══ CONTROLS ═══
+document.querySelectorAll('.tl-zoom-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.tl-zoom-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentZoom = parseInt(btn.dataset.zoom);
+        renderTrack(rawSegments);
+    });
+});
+document.querySelectorAll('.tl-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const act = btn.dataset.filter;
+        btn.classList.toggle('active');
+        if (hiddenActivities.has(act)) hiddenActivities.delete(act);
+        else hiddenActivities.add(act);
+        renderTrack(rawSegments);
+    });
+});
+
+// ═══ MAIN INIT ═══
+async function initTimeline() {
     try {
         const res = await fetch('/api/timeline');
-        const segments = await res.json();
+        rawSegments = await res.json();
 
-        if (!segments || segments.length === 0) {
-            container.innerHTML = `
+        if (!rawSegments || rawSegments.length === 0) {
+            document.getElementById('tlTrack').innerHTML = `
                 <div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--gray);font-size:0.9rem;">
-                    No activity recorded today. Start the Camera Diagnostic to begin tracking.
+                    No activity recorded today. Start Camera tracking to begin.
                 </div>`;
             return;
         }
 
-        container.innerHTML = '';
-        // Create a relative track bar
-        const track = document.createElement('div');
-        track.style.cssText = 'position:relative;width:100%;height:100%;border-radius:8px;overflow:hidden;background:rgba(255,255,255,0.05);';
+        const sessions = groupSessions(rawSegments);
+        const { insights, predictions, distractionCount } = generateInsights(sessions, rawSegments);
 
-        segments.forEach(seg => {
-            const block = document.createElement('div');
-            const color = ACTIVITY_COLORS[seg.activity] || '#7f8c8d';
-            block.style.cssText = `
-                position: absolute;
-                left: ${seg.start}%;
-                width: ${seg.width}%;
-                height: 100%;
-                background: ${color};
-                opacity: 0.85;
-                transition: opacity 0.2s;
-                cursor: pointer;
-            `;
-            // Tooltip on hover
-            const time = new Date(seg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            block.title = `${seg.activity} at ${time}`;
-            block.addEventListener('mouseenter', () => block.style.opacity = '1');
-            block.addEventListener('mouseleave', () => block.style.opacity = '0.85');
-            track.appendChild(block);
-        });
+        renderTrack(rawSegments);
+        renderSessions(sessions);
+        renderSummary(sessions, rawSegments, distractionCount);
 
-        container.appendChild(track);
-    } catch(e) {
-        container.innerHTML = `<div style="color:var(--gray);padding:20px;">Could not load timeline data.</div>`;
-        console.error("Timeline error:", e);
+        // Render Insights
+        document.getElementById('tlInsightList').innerHTML = insights.map(i => `<li>${i}</li>`).join('');
+        document.getElementById('tlPredictList').innerHTML = predictions.map(p => `<li>${p}</li>`).join('');
+
+    } catch (e) {
+        console.error('Timeline init error:', e);
+        document.getElementById('tlTrack').innerHTML = '<div style="padding:20px;color:var(--gray);">Could not load timeline data.</div>';
     }
 }
 
-document.addEventListener('DOMContentLoaded', renderTimeline);
+// Resize handler for canvas
+window.addEventListener('resize', () => { if (rawSegments.length) renderTrack(rawSegments); });
+
+document.addEventListener('DOMContentLoaded', initTimeline);
 </script>
 </body>
 </html>

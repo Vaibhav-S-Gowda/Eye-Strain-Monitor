@@ -36,10 +36,12 @@ let lastBlinkTime = 0;
 let startTime = Date.now();
 let muted = false;
 
-// Config matching the Python script
-const BLINK_THRESHOLD = 0.22;
+// Config — tuned for browser webcam accuracy
+const BLINK_THRESHOLD = 0.24;      // EAR below this = eyes closing (raised for sensitivity)
+const BLINK_COOLDOWN_MS = 300;      // Minimum ms between blink counts (debounce)
 const MIN_DISTANCE_CM = 50;
 const HEAD_TILT_THRESHOLD = 15;
+let lastBlinkRegistered = 0;         // Timestamp of last counted blink
 
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -121,9 +123,12 @@ function onResults(results) {
         if (ear < BLINK_THRESHOLD) {
             consecutiveFramesBelow++;
         } else {
-            if (consecutiveFramesBelow >= 3) {
+            // A blink = eyes were closed for 2+ frames, then opened
+            // Plus a cooldown to prevent double-counting one blink
+            if (consecutiveFramesBelow >= 2 && (Date.now() - lastBlinkRegistered) > BLINK_COOLDOWN_MS) {
                 blinkCount++;
-                blinkEvents.push(Date.now()); // Record for moving window
+                blinkEvents.push(Date.now());
+                lastBlinkRegistered = Date.now();
                 const elMblinks = document.getElementById('m-blinks');
                 if (elMblinks) elMblinks.innerText = blinkCount;
             }
@@ -360,11 +365,28 @@ let camera = null;
     }
 
     document.getElementById('resetBtn')?.addEventListener('click', () => {
+        // Reset all internal counters
         blinkCount = 0;
         blinkEvents = [];
+        consecutiveFramesBelow = 0;
+        lastBlinkRegistered = 0;
         startTime = Date.now();
-        const elBlinks = document.getElementById('m-blinks');
-        if (elBlinks) elBlinks.innerText = 0;
+        window.latestTelemetry = null;
+
+        // Reset all displayed metrics
+        const resets = {
+            'm-blinks': '0',
+            'm-rate': '0.0',
+            'm-dist': '0',
+            'm-tilt': '0.0',
+            'm-fatigue': '0',
+        };
+        for (const [id, val] of Object.entries(resets)) {
+            const el = document.getElementById(id);
+            if (el) el.innerText = val;
+        }
+        const aiEl = document.getElementById('m-ai-fatigued');
+        if (aiEl) aiEl.style.display = 'none';
     });
 
     document.getElementById('muteBtn')?.addEventListener('click', (e) => {
