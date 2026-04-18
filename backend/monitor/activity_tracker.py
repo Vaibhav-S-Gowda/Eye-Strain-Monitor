@@ -1,23 +1,31 @@
-from pynput import keyboard, mouse
-
 import collections
 import time
 
 keyboard_events = collections.deque(maxlen=30)
 mouse_events = collections.deque(maxlen=30)
 
-def on_press(key):
-    keyboard_events.append(time.time())
+# pynput requires a display and is only available on desktop.
+# On cloud servers (Render, Railway, etc.), we gracefully degrade.
+try:
+    from pynput import keyboard, mouse
 
-def on_move(x, y):
-    mouse_events.append(time.time())
+    def on_press(key):
+        keyboard_events.append(time.time())
 
-keyboard.Listener(on_press=on_press).start()
-mouse.Listener(on_move=on_move).start()
+    def on_move(x, y):
+        mouse_events.append(time.time())
+
+    keyboard.Listener(on_press=on_press).start()
+    mouse.Listener(on_move=on_move).start()
+    _HAS_PYNPUT = True
+except (ImportError, Exception):
+    _HAS_PYNPUT = False
 
 def detect_activity():
+    if not _HAS_PYNPUT:
+        return "Monitoring"  # Fallback when pynput is unavailable
+
     now = time.time()
-    # Clean up old events (older than 30s)
     cutoff = now - 30
     while keyboard_events and keyboard_events[0] < cutoff:
         keyboard_events.popleft()

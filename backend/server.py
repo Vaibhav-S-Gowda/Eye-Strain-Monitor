@@ -22,13 +22,14 @@ app = Flask(
     static_folder=os.path.abspath(os.path.join(os.path.dirname(__file__), "../frontend/static"))
 )
 app.config["TEMPLATES_AUTO_RELOAD"] = True
-app.secret_key = "eye_health_secret_key"
+app.secret_key = os.getenv("SECRET_KEY", "eye_health_secret_key")
 UPLOAD_FOLDER = os.path.join(app.static_folder, 'uploads')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB limit
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
-client = MongoClient("mongodb://localhost:27017/")
+# Use MONGODB_URI env var for cloud (MongoDB Atlas), fallback to localhost for dev
+client = MongoClient(os.getenv("MONGODB_URI", "mongodb://localhost:27017/"))
 import sys
 import os
 
@@ -547,10 +548,13 @@ def chat():
     return jsonify({"reply": reply})
 
 def start_server():
-    import webbrowser, threading
-    threading.Timer(1.2, lambda: webbrowser.open("http://127.0.0.1:5000")).start()
-    print("\n  \033[92m* Running on http://127.0.0.1:5000\033[0m")
-    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
+    port = int(os.getenv("PORT", 5000))
+    is_local = os.getenv("RENDER") is None  # Render sets this env var
+    if is_local:
+        import webbrowser, threading
+        threading.Timer(1.2, lambda: webbrowser.open(f"http://127.0.0.1:{port}")).start()
+    print(f"\n  \033[92m* Running on http://0.0.0.0:{port}\033[0m")
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
 
 @app.route("/api/switch-session", methods=["POST"])
 @login_required
@@ -572,7 +576,4 @@ def switch_session():
     return jsonify({"error": "User not found"}), 404
 
 if __name__ == "__main__":
-    import webbrowser, threading
-    threading.Timer(1.2, lambda: webbrowser.open("http://127.0.0.1:5000")).start()
-    print("\n  \033[92m* Running on http://127.0.0.1:5000\033[0m")
-    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
+    start_server()
