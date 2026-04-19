@@ -6,6 +6,8 @@
 
 *Combat digital eye strain with real-time AI monitoring, intelligent interventions, and predictive health analytics.*
 
+[![Neural Nexus Dashboard](assets/dashboard.png)](https://eye-strain-monitor.onrender.com)
+
 </div>
 
 ---
